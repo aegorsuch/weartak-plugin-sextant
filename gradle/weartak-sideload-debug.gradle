@@ -1,0 +1,6 @@
+/**
+ * Debug signing is intentionally not overridden here.
+ *
+ * The plugin app template uses the standard Android debug signing configuration, matching the
+ * host build when the host is also built without custom signing.properties or signing values.
+ */

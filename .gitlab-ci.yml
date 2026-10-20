@@ -1,0 +1,121 @@
+variables:
+  GRADLE_BUILD_LAUNCHER_TAG: "2.6.2"
+  KUBERNETES_MEMORY_LIMIT: "8Gi"
+  GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
+
+stages:
+  - build
+
+.release_build:
+  stage: build
+
+  image:
+    name: ${TAK_REGISTRY_HOST}/devsecops/gradle-build-launcher:17-${GRADLE_BUILD_LAUNCHER_TAG}
+    entrypoint: [""]
+
+  before_script:
+    - chmod +x gradlew
+
+    # Validate signing credentials
+    - |
+      for var in WEARTAK_RELEASE_KEYSTORE_B64 RELEASE_STORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD; do
+        [ -n "$(printenv "$var")" ] || { echo "ERROR: Missing $var"; exit 1; }
+      done
+
+    # Restore production keystore
+    - printf '%s' "$WEARTAK_RELEASE_KEYSTORE_B64" | base64 -d > "$CI_PROJECT_DIR/app/weartak.keystore"
+    - chmod 600 "$CI_PROJECT_DIR/app/weartak.keystore"
+
+    # Existing plugin Gradle script reads this automatically
+    - |
+      cat > signing.properties <<EOF
+      RELEASE_KEYSTORE_FILE=app/weartak.keystore
+      RELEASE_STORE_PASSWORD=$RELEASE_STORE_PASSWORD
+      RELEASE_KEY_ALIAS=$RELEASE_KEY_ALIAS
+      RELEASE_KEY_PASSWORD=$RELEASE_KEY_PASSWORD
+      EOF
+    - chmod 600 signing.properties
+
+    # Validate keystore
+    - |
+      keytool -list \
+        -keystore app/weartak.keystore \
+        -storepass "$RELEASE_STORE_PASSWORD" \
+        -alias "$RELEASE_KEY_ALIAS" >/dev/null
+
+    - echo "Production signing credentials verified."
+
+  script:
+    - ./gradlew --no-daemon clean :app:assembleRelease
+
+    # Verify APK exists and uses WearTAK production certificate
+    - |
+      set -eu
+
+      APK="$(find app/build/outputs/apk/release -type f -name '*.apk' | head -1)"
+      [ -n "$APK" ] || { echo "ERROR: No release APK"; exit 1; }
+
+      SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/opt/android-sdk-linux}}"
+      APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -1)"
+
+      [ -n "$APKSIGNER" ] && [ -x "$APKSIGNER" ] || {
+        echo "ERROR: apksigner missing"
+        exit 1
+      }
+      
+      EXPECTED="1579b600cd84e619e76a91c2db6b031938c999bc2aad926b9a51ec2b166d348d"
+
+      ACTUAL="$(
+        "$APKSIGNER" verify --print-certs "$APK" |
+        sed -n 's/.*certificate SHA-256 digest: //p' |
+        head -1 |
+        tr '[:upper:]' '[:lower:]'
+      )"
+
+      echo "APK: $APK"
+      echo "Signer: $ACTUAL"
+
+      [ "$ACTUAL" = "$EXPECTED" ] || {
+        echo "ERROR: Unexpected signing certificate"
+        exit 1
+      }
+
+      echo "Release APK verified."
+
+  artifacts:
+    when: on_success
+    expire_in: 30 days
+    paths:
+      - app/build/outputs/apk/release/*.apk
+
+# Build release when master is updated
+master_release:
+  extends: .release_build
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'
+
+# Official tagged releases
+official_release:
+  extends: .release_build
+  artifacts:
+    expire_in: never
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$/'
+
+# Validate merge requests without production signing
+verify_merge_request:
+  stage: build
+  image:
+    name: ${TAK_REGISTRY_HOST}/devsecops/gradle-build-launcher:17-${GRADLE_BUILD_LAUNCHER_TAG}
+    entrypoint: [""]
+
+  interruptible: true
+
+  before_script:
+    - chmod +x gradlew
+
+  script:
+    - ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
+
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
