@@ -13,3 +13,6 @@ signing.properties
 captures/
 .externalNativeBuild/
 .cxx/
+
+# WearTAK plugin SDK (TAK.gov only) - fetch with scripts/fetch-sdk
+app/libs/*.aar

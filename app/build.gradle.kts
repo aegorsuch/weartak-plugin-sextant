@@ -4,6 +4,12 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.2.0"
 }
 
+listOf("debug", "release").forEach {
+    check(file("libs/weartak-plugin-sdk-$it.aar").exists()) {
+        "WearTAK plugin SDK missing: app/libs/weartak-plugin-sdk-$it.aar. Run scripts/fetch-sdk (see README)."
+    }
+}
+
 android {
     namespace = "com.weartak.plugin.sextant"
     compileSdk = 35

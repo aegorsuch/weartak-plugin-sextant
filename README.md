@@ -6,6 +6,22 @@ Points are local only and are never sent as CoT.
 
 Built from the [WearTAK plugin template](https://git.tak.gov/weartak-plugins/weartak-plugin-template).
 
+## WearTAK plugin SDK
+
+The WearTAK plugin SDK is not included in this repository. It is distributed to TAK.gov users through the
+plugin template. With git.tak.gov access, fetch it into `app/libs/` before building:
+
+```powershell
+./scripts/fetch-sdk.ps1
+```
+
+```bash
+./scripts/fetch-sdk.sh
+```
+
+Both scripts sparse-clone `weartak-plugins/weartak-plugin-template` and copy
+`app/libs/weartak-plugin-sdk-{debug,release}.aar`. Pass a ref (branch or tag) to pin a version.
+
 ## Build and install
 
 ```bash
