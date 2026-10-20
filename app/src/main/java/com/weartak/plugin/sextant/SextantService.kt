@@ -22,7 +22,6 @@ import android.net.wifi.WifiManager
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import android.provider.Settings
 import android.util.Log
 import com.weartak.plugin.sextant.R
 import org.json.JSONObject
@@ -75,7 +74,8 @@ class SextantService : Service(), SensorEventListener, LocationListener {
     @SuppressLint("MissingPermission")
     private fun startSensing() {
         registered = true
-        SextantEngine.throttled = Settings.Global.getInt(contentResolver, "wifi_scan_throttle_enabled", 1) != 0
+        ScanThrottle.disable(this)
+        SextantEngine.throttled = ScanThrottle.isThrottled(this)
         registerReceiver(scanReceiver, IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION))
         sensors.getDefaultSensor(Sensor.TYPE_PRESSURE)?.let { sensors.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
         sensors.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)?.let { sensors.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
@@ -132,6 +132,7 @@ class SextantService : Service(), SensorEventListener, LocationListener {
             runCatching { locations.removeUpdates(this) }
             SextantEngine.log("record_stop", JSONObject())
         }
+        ScanThrottle.restore(this)
         registered = false
         SextantEngine.recording = false
         super.onDestroy()

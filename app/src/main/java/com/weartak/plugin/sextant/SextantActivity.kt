@@ -116,6 +116,8 @@ class SextantActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         SextantEngine.init(this)
+        // Recover if a previous recording was killed before it could restore the scan throttle.
+        if (!SextantEngine.recording) ScanThrottle.restore(this)
         val needed = listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACTIVITY_RECOGNITION,
             Manifest.permission.POST_NOTIFICATIONS)
             .filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
@@ -161,9 +163,9 @@ private fun SextantApp() {
             Screen.Home -> HomeScreen(
                 onOpen = { screen = Screen.Address(it) },
                 onAdd = {
-                    val n = SextantEngine.addresses.size + 1
-                    listen("Address name") { name -> screen = Screen.Address(SextantEngine.addAddress(name).id) }
-                    if (speechCallback == null) screen = Screen.Address(SextantEngine.addAddress("Address $n").id)
+                    val a = SextantEngine.addAddress("Address ${SextantEngine.addresses.size + 1}")
+                    screen = Screen.Address(a.id)
+                    listen("Address name") { name -> a.name = name; SextantEngine.save(); SextantEngine.touch() }
                 },
             )
             is Screen.Address -> AddressScreen(s.id,
