@@ -40,6 +40,14 @@ limit off only while recording, restoring the original setting when recording st
 adb shell pm grant com.weartak.plugin.sextant android.permission.WRITE_SECURE_SETTINGS
 ```
 
+## Releases
+
+Pushes to `main` on git.tak.gov build a WearTAK production-signed APK and publish it to the
+GitHub mirror as **TAK.gov Forge CI/CD Pipeline Release (<version>)**; `vX.Y.Z[.B]` tags
+build official releases. Versioning and release rules match WearTAK; see
+[ci/README.md](ci/README.md). Release Sextant works with release WearTAK; debug builds
+work with WearTAK `.dev`.
+
 ## Data
 
 Survey data and walk logs are written to

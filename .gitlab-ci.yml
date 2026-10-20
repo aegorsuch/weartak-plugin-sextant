@@ -1,32 +1,70 @@
+# Sextant CI/CD - same model as WearTAK WearOS (core/weartak-core/wearos-tak-civ) and the
+# WearTAK plugin template: production-signed release builds, then a verified rolling GitHub
+# release and a tester checklist. See ci/README.md.
 variables:
   GRADLE_BUILD_LAUNCHER_TAG: "2.6.2"
   KUBERNETES_MEMORY_LIMIT: "8Gi"
   GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
+  # Template ref the WearTAK plugin SDK is fetched from.
+  WEARTAK_SDK_REF: "master"
 
 stages:
+  - test
   - build
+  - publish
 
-.release_build:
-  stage: build
-
+.gradle_image:
   image:
     name: ${TAK_REGISTRY_HOST}/devsecops/gradle-build-launcher:17-${GRADLE_BUILD_LAUNCHER_TAG}
     entrypoint: [""]
 
-  before_script:
-    - chmod +x gradlew
+release_publisher_tests:
+  stage: test
+  image:
+    name: python:3.12-slim
+    entrypoint: [""]
+  script:
+    - python -m unittest discover -s ci/tests -v
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_COMMIT_TAG'
 
-    # Validate signing credentials
+# Unit tests + debug build on every merge request and main push (no production signing).
+unit_tests:
+  extends: .gradle_image
+  stage: test
+  interruptible: true
+  script:
+    - chmod +x gradlew scripts/fetch-sdk.sh
+    - scripts/fetch-sdk.sh "$WEARTAK_SDK_REF"
+    - ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
+  artifacts:
+    when: always
+    expire_in: 7 days
+    reports:
+      junit: app/build/test-results/testDebugUnitTest/*.xml
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_COMMIT_TAG'
+
+# ---------------------------------------------------------------------------
+# Common release build (hidden). Signs with the WearTAK production key so release
+# WearTAK (signature-level BIND_PLUGIN permission) can bind the plugin.
+# ---------------------------------------------------------------------------
+.release_build:
+  extends: .gradle_image
+  stage: build
+
+  before_script:
+    - chmod +x gradlew scripts/fetch-sdk.sh
     - |
       for var in WEARTAK_RELEASE_KEYSTORE_B64 RELEASE_STORE_PASSWORD RELEASE_KEY_ALIAS RELEASE_KEY_PASSWORD; do
         [ -n "$(printenv "$var")" ] || { echo "ERROR: Missing $var"; exit 1; }
       done
-
-    # Restore production keystore
     - printf '%s' "$WEARTAK_RELEASE_KEYSTORE_B64" | base64 -d > "$CI_PROJECT_DIR/app/weartak.keystore"
     - chmod 600 "$CI_PROJECT_DIR/app/weartak.keystore"
-
-    # Existing plugin Gradle script reads this automatically
     - |
       cat > signing.properties <<EOF
       RELEASE_KEYSTORE_FILE=app/weartak.keystore
@@ -35,87 +73,69 @@ stages:
       RELEASE_KEY_PASSWORD=$RELEASE_KEY_PASSWORD
       EOF
     - chmod 600 signing.properties
-
-    # Validate keystore
-    - |
-      keytool -list \
-        -keystore app/weartak.keystore \
-        -storepass "$RELEASE_STORE_PASSWORD" \
-        -alias "$RELEASE_KEY_ALIAS" >/dev/null
-
+    # Confirm keystore/password/alias before building.
+    - keytool -list -keystore app/weartak.keystore -storepass "$RELEASE_STORE_PASSWORD" -alias "$RELEASE_KEY_ALIAS" >/dev/null
     - echo "Production signing credentials verified."
+    - scripts/fetch-sdk.sh "$WEARTAK_SDK_REF"
 
   script:
     - ./gradlew --no-daemon clean :app:assembleRelease
-
-    # Verify APK exists and uses WearTAK production certificate
+    # Verify the APK is signed with the WearTAK Android production certificate.
     - |
       set -eu
-
       APK="$(find app/build/outputs/apk/release -type f -name '*.apk' | head -1)"
       [ -n "$APK" ] || { echo "ERROR: No release APK"; exit 1; }
-
       SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/opt/android-sdk-linux}}"
       APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner | sort -V | tail -1)"
-
-      [ -n "$APKSIGNER" ] && [ -x "$APKSIGNER" ] || {
-        echo "ERROR: apksigner missing"
-        exit 1
-      }
-      
+      [ -n "$APKSIGNER" ] && [ -x "$APKSIGNER" ] || { echo "ERROR: apksigner missing"; exit 1; }
       EXPECTED="1579b600cd84e619e76a91c2db6b031938c999bc2aad926b9a51ec2b166d348d"
-
-      ACTUAL="$(
-        "$APKSIGNER" verify --print-certs "$APK" |
-        sed -n 's/.*certificate SHA-256 digest: //p' |
-        head -1 |
-        tr '[:upper:]' '[:lower:]'
-      )"
-
+      "$APKSIGNER" verify "$APK" || { echo "ERROR: APK signature verification failed."; exit 1; }
+      ACTUAL="$("$APKSIGNER" verify --print-certs "$APK" | sed -n 's/.*certificate SHA-256 digest: //p' | head -1 | tr '[:upper:]' '[:lower:]')"
       echo "APK: $APK"
-      echo "Signer: $ACTUAL"
+      echo "Expected signer: $EXPECTED"
+      echo "Actual signer:   $ACTUAL"
+      [ "$ACTUAL" = "$EXPECTED" ] || { echo "ERROR: Unexpected signing certificate"; exit 1; }
+      echo "Release signing verified."
+      # Bind publication to the exact APK whose production signature was checked.
+      sha256sum "$APK" > app/build/outputs/apk/release/verified-apk.sha256
+  after_script:
+    - rm -f app/weartak.keystore signing.properties
 
-      [ "$ACTUAL" = "$EXPECTED" ] || {
-        echo "ERROR: Unexpected signing certificate"
-        exit 1
-      }
-
-      echo "Release APK verified."
-
+# Signed build for every push/merge to main (internal testing).
+main_release:
+  extends: .release_build
   artifacts:
-    when: on_success
+    when: always
     expire_in: 30 days
     paths:
       - app/build/outputs/apk/release/*.apk
-
-# Build release when master is updated
-master_release:
-  extends: .release_build
+      - app/build/outputs/apk/release/verified-apk.sha256
+      - app/build/outputs/apk/release/output-metadata.json
   rules:
-    - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE == "push"'
 
-# Official tagged releases
+# Official release: only for version tags such as v5.8.0 or v5.8.0.1.
 official_release:
   extends: .release_build
   artifacts:
+    when: always
     expire_in: never
+    paths:
+      - app/build/outputs/apk/release/*.apk
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$/'
 
-# Validate merge requests without production signing
-verify_merge_request:
-  stage: build
+# No needs: wait for all earlier stages (tests + build) to succeed.
+publish_github_main:
+  stage: publish
   image:
-    name: ${TAK_REGISTRY_HOST}/devsecops/gradle-build-launcher:17-${GRADLE_BUILD_LAUNCHER_TAG}
+    name: python:3.12-slim
     entrypoint: [""]
-
-  interruptible: true
-
-  before_script:
-    - chmod +x gradlew
-
+  dependencies:
+    - main_release
+  resource_group: sextant-github-main
+  interruptible: false
   script:
-    - ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
-
+    - python ci/publish_github_release.py
   rules:
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_SERVER_HOST == "git.tak.gov" && $CI_PROJECT_PATH == "weartak-plugins/weartak-plugin-sextant" && $CI_COMMIT_BRANCH == "main" && $CI_COMMIT_REF_PROTECTED == "true" && $CI_PIPELINE_SOURCE == "push"'

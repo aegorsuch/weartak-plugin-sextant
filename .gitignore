@@ -16,3 +16,5 @@ captures/
 
 # WearTAK plugin SDK (TAK.gov only) - fetch with scripts/fetch-sdk
 app/libs/*.aar
+
+__pycache__/

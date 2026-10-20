@@ -18,8 +18,24 @@ android {
         applicationId = "com.weartak.plugin.sextant"
         minSdk = 30
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        // Same scheme as WearTAK (WEARTAK-239): CI builds get a unique, increasing versionCode
+        // per GitLab pipeline so MDMs such as Knox Manage accept each upload, and a versionName
+        // that identifies the pipeline and commit. Bump the base for each official vX.Y.Z[.B] tag.
+        val baseVersionCode = 580
+        val baseVersionName = "5.8.0"
+        val ciPipelineIid = System.getenv("CI_PIPELINE_IID")?.toIntOrNull()
+        if (ciPipelineIid != null) {
+            if (ciPipelineIid !in 0..9999) {
+                throw GradleException("CI_PIPELINE_IID $ciPipelineIid exceeds the versionCode pipeline range (0-9999).")
+            }
+            val sha = System.getenv("CI_COMMIT_SHORT_SHA") ?: "local"
+            versionCode = baseVersionCode * 10000 + ciPipelineIid
+            versionName = "$baseVersionName-p$ciPipelineIid+$sha"
+        } else {
+            versionCode = baseVersionCode
+            versionName = baseVersionName
+        }
+        base.archivesName.set("Sextant-$baseVersionName-$versionCode")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
