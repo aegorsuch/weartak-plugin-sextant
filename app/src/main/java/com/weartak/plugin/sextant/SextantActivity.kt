@@ -1,11 +1,12 @@
-﻿package com.weartak.plugin.sextant
+package com.weartak.plugin.sextant
 
 import android.Manifest
+import android.app.RemoteInput
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.speech.RecognizerIntent
+import androidx.wear.input.RemoteInputIntentHelper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -85,6 +86,7 @@ import org.maplibre.spatialk.geojson.Position
 import java.util.UUID
 import kotlin.math.roundToInt
 
+private const val INPUT_KEY = "sextant_name"
 private val Amber = Color(0xFFFFB300)
 private val AmberDark = Color(0xFF3A2A00)
 private val Good = Color(0xFF34A853)
@@ -134,16 +136,17 @@ private fun SextantApp() {
     var screen by remember { mutableStateOf<Screen>(Screen.Home) }
     var speechCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
     val speech = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
-        val text = r.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()
+        val text = r.data?.let { RemoteInput.getResultsFromIntent(it) }?.getCharSequence(INPUT_KEY)?.toString()
         if (!text.isNullOrBlank()) speechCallback?.invoke(text.trim().replaceFirstChar { it.uppercase() })
         speechCallback = null
     }
+    // System Wear text input (Samsung keyboard with its own mic), no app chooser.
     val listen: (String, (String) -> Unit) -> Unit = { prompt, cb ->
         speechCallback = cb
         try {
-            speech.launch(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
-                .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                .putExtra(RecognizerIntent.EXTRA_PROMPT, prompt))
+            val intent = RemoteInputIntentHelper.createActionRemoteInputIntent()
+            RemoteInputIntentHelper.putRemoteInputsExtra(intent, listOf(RemoteInput.Builder(INPUT_KEY).setLabel(prompt).build()))
+            speech.launch(intent)
         } catch (_: ActivityNotFoundException) { speechCallback = null }
     }
     @Suppress("UNUSED_VARIABLE") val v = SextantEngine.version
@@ -246,9 +249,10 @@ private fun RowChip(label: String, secondary: String? = null, icon: Int? = null,
 // ---------------------------------------------------------------------------------------------
 @Composable
 private fun HomeScreen(onOpen: (String) -> Unit, onAdd: () -> Unit) {
+    SextantEngine.version // recompose when survey data changes
     ScalingLazyColumn(Modifier.fillMaxSize()) {
         item { Title("Sextant") }
-        item { ActionChip("Add address", secondary = "say a name", onClick = onAdd) }
+        item { ActionChip("Add address", secondary = "name it after", onClick = onAdd) }
         items(SextantEngine.addresses.toList()) { a ->
             RowChip(a.name, "${a.points.size} points") { onOpen(a.id) }
         }
@@ -258,6 +262,7 @@ private fun HomeScreen(onOpen: (String) -> Unit, onAdd: () -> Unit) {
 
 @Composable
 private fun AddressScreen(id: String, onDrop: () -> Unit, onLocate: () -> Unit, onPoint: (String) -> Unit) {
+    SextantEngine.version // recompose when survey data changes
     val ctx = LocalContext.current
     val a = SextantEngine.address(id) ?: return
     val aps = SextantEngine.lastScan.size
@@ -370,7 +375,7 @@ private fun FloorNameScreen(id: String, cap: Captured, listen: (String, (String)
             val base = a.points.firstOrNull { it.pressure != null }
             Small(if (base == null) "First point sets the floor baseline" else "Barometer suggests L$suggested (vs ${base.name})")
         }
-        item { ActionChip("Name: $name", secondary = "tap to speak") { listen("Point name") { name = it } } }
+        item { ActionChip("Name: $name", secondary = "tap to rename") { listen("Point name") { name = it } } }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 listOf("Door", "Elevator", "Stairs").forEach { n -> CompactChip(onClick = { name = n }, label = { Text(n, fontSize = 11.sp) }, colors = ChipDefaults.secondaryChipColors()) }
@@ -472,6 +477,7 @@ private fun LocateScreen(id: String, onCorrect: (Map<String, Int>, String?) -> U
 
 @Composable
 private fun CorrectPickScreen(id: String, scan: Map<String, Int>, guessed: String?, onPicked: () -> Unit, onPlaceNew: (String) -> Unit) {
+    SextantEngine.version // recompose when survey data changes
     val a = SextantEngine.address(id) ?: return
     ScalingLazyColumn(Modifier.fillMaxSize()) {
         item { Title("Where are you really?") }
@@ -496,6 +502,7 @@ private fun CorrectPickScreen(id: String, scan: Map<String, Int>, guessed: Strin
 
 @Composable
 private fun PointDetailScreen(id: String, pointId: String, onMap: () -> Unit, onDeleted: () -> Unit) {
+    SextantEngine.version // recompose when survey data changes
     val a = SextantEngine.address(id) ?: return
     val p = a.points.firstOrNull { it.id == pointId } ?: return
     var confirm by remember { mutableStateOf(false) }
