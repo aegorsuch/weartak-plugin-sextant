@@ -26,7 +26,7 @@ class SextantPoint(
     val id: String,
     var name: String,
     var floor: Int,
-    val pressure: Float?,
+    var pressure: Float?,
     var lat: Double?,
     var lon: Double?,
     var acc: Float?,
@@ -113,6 +113,16 @@ object SextantEngine {
         val clean = name.trim().takeIf { it.isNotEmpty() } ?: return
         p.name = clean; save(); touch()
         log("rename_point", JSONObject().put("address", a.id).put("point", p.id).put("name", clean))
+    }
+
+    /** Replaces a room's Wi-Fi fingerprint (and barometer reading); name, floor and position are kept. */
+    fun rescanPoint(a: SextantAddress, p: SextantPoint, scans: List<Map<String, Int>>, hpa: Float?): Boolean {
+        if (scans.isEmpty()) return false
+        p.scans.clear(); p.scans.addAll(scans)
+        if (hpa != null) p.pressure = hpa
+        save(); touch()
+        log("rescan_point", JSONObject().put("address", a.id).put("point", p.id).put("scans", scans.size))
+        return true
     }
 
     fun deletePoint(a: SextantAddress, p: SextantPoint) {
