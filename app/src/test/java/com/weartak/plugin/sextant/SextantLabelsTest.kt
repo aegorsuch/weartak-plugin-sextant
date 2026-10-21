@@ -8,6 +8,14 @@ class SextantLabelsTest {
     private fun point(name: String, floor: Int) =
         SextantPoint(name + floor, name, floor, null, null, null, null, "none", null, 0L, mutableListOf())
 
+    @Test fun cleanNameReplacesEmojiWithWords() {
+        assertEquals("Door", cleanName("\uD83D\uDEAA"))
+        assertEquals("Front Door", cleanName("Front \uD83D\uDEAA"))
+        assertEquals("Door Stairs", cleanName("\uD83D\uDEAA\uFE0FStairs"))
+        assertEquals("Kitchen 2", cleanName("  Kitchen   2 "))
+        assertEquals("Café", cleanName("Café"))
+    }
+
     @Test fun floorLabelIsTwoDigitsWithoutL() {
         assertEquals("00", floorLabel(0))
         assertEquals("06", floorLabel(6))

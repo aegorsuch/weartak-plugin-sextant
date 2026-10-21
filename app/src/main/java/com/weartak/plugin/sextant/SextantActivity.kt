@@ -7,18 +7,23 @@ import android.content.Context
 import android.content.IntentFilter
 import android.net.wifi.WifiManager
 import androidx.compose.foundation.Image
-import android.app.RemoteInput
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
-import androidx.wear.input.RemoteInputIntentHelper
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +59,8 @@ import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -99,7 +106,6 @@ import org.maplibre.spatialk.geojson.Position
 import java.util.UUID
 import kotlin.math.roundToInt
 
-private const val INPUT_KEY = "sextant_name"
 private val Amber = Color(0xFFFFB300)
 private val AmberDark = Color(0xFF3A2A00)
 private val Good = Color(0xFF34A853)
@@ -148,21 +154,9 @@ private var lastDropStepCounter: Long? = null
 private fun SextantApp() {
     val ctx = LocalContext.current
     var screen by remember { mutableStateOf<Screen>(Screen.Home) }
-    var speechCallback by remember { mutableStateOf<((String) -> Unit)?>(null) }
-    val speech = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
-        val text = r.data?.let { RemoteInput.getResultsFromIntent(it) }?.getCharSequence(INPUT_KEY)?.toString()
-        if (!text.isNullOrBlank()) speechCallback?.invoke(text.trim().replaceFirstChar { it.uppercase() })
-        speechCallback = null
-    }
-    // System Wear text input (Samsung keyboard with its own mic), no app chooser.
-    val listen: (String, (String) -> Unit) -> Unit = { prompt, cb ->
-        speechCallback = cb
-        try {
-            val intent = RemoteInputIntentHelper.createActionRemoteInputIntent()
-            RemoteInputIntentHelper.putRemoteInputsExtra(intent, listOf(RemoteInput.Builder(INPUT_KEY).setLabel(prompt).build()))
-            speech.launch(intent)
-        } catch (_: ActivityNotFoundException) { speechCallback = null }
-    }
+    var editing by remember { mutableStateOf<NameEdit?>(null) }
+    // In-app editor so the current name is pre-filled and the Samsung keyboard opens in typing mode.
+    val listen: (String, String, (String) -> Unit) -> Unit = { prompt, initial, cb -> editing = NameEdit(prompt, initial, cb) }
     @Suppress("UNUSED_VARIABLE") val v = SextantEngine.version
 
     val goBack = {
@@ -184,7 +178,7 @@ private fun SextantApp() {
                 onAdd = {
                     val a = SextantEngine.addAddress("Address ${SextantEngine.addresses.size + 1}")
                     screen = Screen.Address(a.id)
-                    listen("Address name") { name -> SextantEngine.renameAddress(a, name) }
+                    listen("Address name", a.name) { name -> SextantEngine.renameAddress(a, name) }
                 },
             )
             is Screen.Address -> AddressScreen(s.id,
@@ -192,7 +186,7 @@ private fun SextantApp() {
                 onLocate = { screen = Screen.Locate(s.id) },
                 onRename = {
                     SextantEngine.address(s.id)?.let { address ->
-                        listen("Address name") { name -> SextantEngine.renameAddress(address, name) }
+                        listen("Address name", address.name) { name -> SextantEngine.renameAddress(address, name) }
                     }
                 },
                 onPoint = { screen = Screen.PointDetail(s.id, it) },
@@ -235,6 +229,7 @@ private fun SextantApp() {
         if (screen != Screen.Home) {
             SmallRoundButton(R.drawable.sextant_back, "Back", Modifier.align(Alignment.TopCenter).padding(top = 6.dp), onClick = goBack)
         }
+        editing?.let { NameEditor(it) { editing = null } }
     }
 
     LaunchedEffect(screen) {
@@ -339,6 +334,51 @@ private fun SmallRoundButton(icon: Int, label: String, modifier: Modifier = Modi
 ) {
     Box(Modifier.size(28.dp).background(Color(0xFF33363B), CircleShape), contentAlignment = Alignment.Center) {
         Icon(painterResource(icon), contentDescription = label, tint = Color.White, modifier = Modifier.size(18.dp))
+    }
+}
+
+private class NameEdit(val prompt: String, val initial: String, val onDone: (String) -> Unit)
+
+@Composable
+private fun NameEditor(edit: NameEdit, onClose: () -> Unit) {
+    var value by remember(edit) { mutableStateOf(TextFieldValue(edit.initial, TextRange(edit.initial.length))) }
+    val focus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val save = {
+        cleanName(value.text).takeIf { it.isNotEmpty() }?.let { edit.onDone(it.replaceFirstChar { c -> c.uppercase() }) }
+        keyboard?.hide()
+        onClose()
+    }
+    val cancel = { keyboard?.hide(); onClose() }
+    BackHandler(onBack = cancel)
+    LaunchedEffect(edit) {
+        focus.requestFocus()
+        keyboard?.show()
+    }
+    Column(
+        Modifier.fillMaxSize().background(Color.Black).clickable(enabled = false) {}.padding(horizontal = 20.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(edit.prompt, color = Color(0xFFB0B0B0), fontSize = 12.sp)
+        Spacer(Modifier.height(6.dp))
+        BasicTextField(
+            value = value,
+            onValueChange = { value = it },
+            singleLine = true,
+            textStyle = TextStyle(color = Color.White, fontSize = 16.sp, textAlign = TextAlign.Center),
+            cursorBrush = SolidColor(Amber),
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { save() }),
+            modifier = Modifier.fillMaxWidth().focusRequester(focus)
+                .background(Color(0xFF202124), RoundedCornerShape(12.dp))
+                .padding(horizontal = 10.dp, vertical = 10.dp),
+        )
+        Spacer(Modifier.height(6.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SmallRoundButton(R.drawable.sextant_close, "Cancel", onClick = cancel)
+            SmallRoundButton(R.drawable.sextant_check, "Save", onClick = save)
+        }
     }
 }
 
@@ -490,10 +530,9 @@ private fun AddressScreen(
 private fun CaptureScreen(id: String, trackSteps: Boolean = true, onDone: (Captured) -> Unit, onCancel: () -> Unit) {
     val ctx = LocalContext.current
     val wifi = remember { ctx.applicationContext.getSystemService(WifiManager::class.java) }
-    val total = 15
-    val maxWait = 30
-    var left by remember { mutableIntStateOf(total) }
-    var waited by remember { mutableIntStateOf(0) }
+    val target = 5
+    var elapsed by remember { mutableIntStateOf(0) }
+    var finishEarly by remember { mutableStateOf(false) }
     val scans = remember { mutableListOf<Map<String, Int>>() }
     var scanN by remember { mutableIntStateOf(0) }
     val hpa = remember { mutableListOf<Float>() }
@@ -515,15 +554,11 @@ private fun CaptureScreen(id: String, trackSteps: Boolean = true, onDone: (Captu
     }
     LaunchedEffect(Unit) {
         requestScan()
-        while (left > 0) {
+        // Wait for enough scans for a stable fingerprint; the user can save early once one has arrived.
+        while (scans.size < target && !finishEarly) {
             SextantEngine.pressure?.let { hpa.add(it) }
-            delay(1000); left--
-            if (scans.isEmpty() && left % 5 == 0) requestScan()
-        }
-        // Throttled scans can arrive after the countdown; keep waiting for the first one.
-        while (scans.isEmpty() && waited < maxWait) {
-            if (waited % 5 == 0) requestScan()
-            delay(1000); waited++
+            delay(1000); elapsed++
+            if (elapsed % 6 == 0) requestScan()
         }
         val all = scans.toMutableList()
         if (all.isEmpty() && SextantEngine.lastScan.isNotEmpty() &&
@@ -536,27 +571,29 @@ private fun CaptureScreen(id: String, trackSteps: Boolean = true, onDone: (Captu
             g?.latitude, g?.longitude, g?.accuracy, fromPrev))
     }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        val waiting = left == 0
-        CircularProgressIndicator(progress = if (waiting) waited / maxWait.toFloat() else 1f - left / total.toFloat(),
-            modifier = Modifier.fillMaxSize().padding(2.dp), indicatorColor = if (waiting) Blue else Amber, strokeWidth = 6.dp)
+        CircularProgressIndicator(progress = scanN.coerceAtMost(target) / target.toFloat(),
+            modifier = Modifier.fillMaxSize().padding(2.dp), indicatorColor = Amber, strokeWidth = 6.dp)
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(painterResource(if (waiting) R.drawable.sextant_wifi else R.drawable.sextant_stand),
-                contentDescription = if (waiting) "Waiting for Wi-Fi scan" else "Stand still",
-                tint = if (waiting) Blue else Color.Gray, modifier = Modifier.size(20.dp))
-            Text(if (waiting) "${maxWait - waited} s" else "$left s", fontSize = 44.sp, fontWeight = FontWeight.Medium)
+            Icon(painterResource(R.drawable.sextant_stand), contentDescription = "Stand still",
+                tint = Color.Gray, modifier = Modifier.size(20.dp))
+            Text("${scanN.coerceAtMost(target)}/$target", fontSize = 44.sp, fontWeight = FontWeight.Medium,
+                modifier = Modifier.semantics { contentDescription = "$scanN of $target Wi-Fi scans" })
             val g = SextantEngine.gps
             val gpsOk = g != null && System.currentTimeMillis() - g.time < 20_000
-            StatRow(listOf(R.drawable.sextant_wifi to "$scanN·${SextantEngine.lastScan.size}",
+            StatRow(listOf(R.drawable.sextant_wifi to "${SextantEngine.lastScan.size}",
                 R.drawable.sextant_gps to (if (gpsOk) "±${g!!.accuracy.roundToInt()}m" else "—")))
             StatRow(listOf(R.drawable.sextant_gauge to (SextantEngine.pressure?.let { "%.1f".format(it) } ?: "—")))
             Spacer(Modifier.height(6.dp))
-            SmallRoundButton(R.drawable.sextant_close, "Cancel", onClick = onCancel)
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                SmallRoundButton(R.drawable.sextant_close, "Cancel", onClick = onCancel)
+                if (scanN > 0 && scanN < target) SmallRoundButton(R.drawable.sextant_check, "Save with $scanN scans") { finishEarly = true }
+            }
         }
     }
 }
 
 @Composable
-private fun FloorNameScreen(id: String, cap: Captured, listen: (String, (String) -> Unit) -> Unit, onSaved: (String, String, Boolean) -> Unit, onBack: () -> Unit) {
+private fun FloorNameScreen(id: String, cap: Captured, listen: (String, String, (String) -> Unit) -> Unit, onSaved: (String, String, Boolean) -> Unit, onBack: () -> Unit) {
     val a = SextantEngine.address(id) ?: return
     val suggested = SextantEngine.estimateFloor(a, cap.hpa) ?: a.points.lastOrNull()?.floor ?: 1
     var floor by remember { mutableIntStateOf(suggested) }
@@ -586,7 +623,7 @@ private fun FloorNameScreen(id: String, cap: Captured, listen: (String, (String)
                 }
             }
         }
-        item { ActionChip(name, icon = R.drawable.sextant_edit) { listen("Room name") { name = it } } }
+        item { ActionChip(name, icon = R.drawable.sextant_edit) { listen("Room name", name) { name = it } } }
         item { StatRow(listOf(R.drawable.sextant_floor to "")) }
         item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
@@ -730,7 +767,7 @@ private fun CorrectPickScreen(id: String, scan: Map<String, Int>, guessed: Strin
 }
 
 @Composable
-private fun PointDetailScreen(id: String, pointId: String, listen: (String, (String) -> Unit) -> Unit, onMap: () -> Unit, onRescan: () -> Unit, onDeleted: () -> Unit) {
+private fun PointDetailScreen(id: String, pointId: String, listen: (String, String, (String) -> Unit) -> Unit, onMap: () -> Unit, onRescan: () -> Unit, onDeleted: () -> Unit) {
     SextantEngine.version // recompose when survey data changes
     val a = SextantEngine.address(id) ?: return
     val p = a.points.firstOrNull { it.id == pointId } ?: return
@@ -739,7 +776,7 @@ private fun PointDetailScreen(id: String, pointId: String, listen: (String, (Str
         item { Title(roomLabel(a, p), Color.White) }
         item { StatRow(roomStats(p)) }
         p.stepsFromPrev?.let { item { StatRow(listOf(R.drawable.sextant_steps to "$it")) } }
-        item { RowChip(p.name, icon = R.drawable.sextant_edit) { listen("Room name") { SextantEngine.renamePoint(a, p, it) } } }
+        item { RowChip(p.name, icon = R.drawable.sextant_edit) { listen("Room name", p.name) { SextantEngine.renamePoint(a, p, it) } } }
         item {
             IconChip(listOf(R.drawable.sextant_scan, R.drawable.sextant_room), "Rescan room",
                 stats = if (p.scans.isEmpty()) listOf(R.drawable.sextant_wifi to "0 ⚠") else null, onClick = onRescan)
