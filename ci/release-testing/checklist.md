@@ -30,7 +30,10 @@ features, leave it unchecked and record **N/A** with the reason in the results.
 - [ ] **Record and scan limit:** start recording; Wi-Fi scans run about every 6 s
   while recording. After **Stop**, `wifi_scan_throttle_enabled` is restored (1).
 - [ ] **Back button:** every screen except the address list shows a small back
-  button at the top, and it returns to the previous screen.
+  button at the top, and it returns to the previous screen. The address list's
+  WearTAK back arrow starts near the top without automatic list centering;
+  Add address is visible below it on entry. Back arrows remain visually small
+  with a 48 dp tap target and a TalkBack label.
 - [ ] **Drop points:** drop points on at least two floors and rooms; each point
   saves a Wi-Fi fingerprint, floor (barometer) and name. **Office** and **Parking**
   are available as room presets.
