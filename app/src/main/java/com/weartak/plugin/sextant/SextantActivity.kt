@@ -222,6 +222,8 @@ private val ROOM_PRESETS = listOf(
 
 private val ROOM_ORDER = compareBy<SextantPoint, String>(String.CASE_INSENSITIVE_ORDER) { it.name }
 
+private fun roomsLabel(n: Int) = if (n == 1) "1 Room" else "$n Rooms"
+
 private fun addrIdOf(s: Screen): String = when (s) {
     is Screen.Address -> s.id; is Screen.Capture -> s.id; is Screen.FloorName -> s.id; is Screen.MapPlace -> s.id
     is Screen.Locate -> s.id; is Screen.CorrectPick -> s.id; is Screen.PointDetail -> s.id; Screen.Home -> ""
@@ -272,11 +274,10 @@ private fun HomeScreen(onOpen: (String) -> Unit, onAdd: () -> Unit) {
     SextantEngine.version // recompose when survey data changes
     ScalingLazyColumn(Modifier.fillMaxSize()) {
         item { Title("Sextant") }
-        item { ActionChip("Add address", secondary = "name it after", onClick = onAdd) }
+        item { ActionChip("Add address", icon = R.drawable.markerdrop, onClick = onAdd) }
         items(SextantEngine.addresses.toList()) { a ->
-            RowChip(a.name, "${a.points.size} rooms") { onOpen(a.id) }
+            RowChip(a.name, roomsLabel(a.points.size)) { onOpen(a.id) }
         }
-        item { Small("Local only · nothing is sent as CoT") }
     }
 }
 
@@ -288,7 +289,7 @@ private fun AddressScreen(id: String, onDrop: () -> Unit, onLocate: () -> Unit, 
     var confirmDelete by remember { mutableStateOf(false) }
     val aps = SextantEngine.lastScan.size
     ScalingLazyColumn(Modifier.fillMaxSize()) {
-        item { Title("${a.name} · ${a.points.size} rooms") }
+        item { Title("${a.name} · ${roomsLabel(a.points.size)}") }
         item {
             val steps = SextantEngine.stepsSinceStart()
             val rec = if (SextantEngine.recording) "● Recording · ${SextantEngine.scanCount} scans" +
@@ -323,7 +324,7 @@ private fun AddressScreen(id: String, onDrop: () -> Unit, onLocate: () -> Unit, 
                 colors = ChipDefaults.chipColors(backgroundColor = if (confirmDelete) Color(0xFF8B1A1A) else Color(0xFF33363B)),
             )
         }
-        if (confirmDelete) item { Small("Removes ${a.points.size} rooms. Walk log is kept.", Weak) }
+        if (confirmDelete) item { Small("Removes ${roomsLabel(a.points.size)}. Walk log is kept.", Weak) }
     }
 }
 
