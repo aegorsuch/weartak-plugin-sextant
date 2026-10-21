@@ -38,6 +38,8 @@ features, leave it unchecked and record **N/A** with the reason in the results.
   rooms with the same name show their floor at the end (e.g. `Stairs 06`, `Stairs 07`).
 - [ ] **Rescan room:** open a room (including one with 0 scans), tap **Rescan room**,
   stand still for the capture; the scan count updates and name, floor and map pin are unchanged.
+- [ ] **Icons:** stats show as icons (Wi-Fi, floor, GPS, barometer, steps); record/stop,
+  cancel, skip and set-here are icon buttons; no leftover helper text duplicates an icon.
 - [ ] **Map placement / correct position:** set a point's position on the map with
   the crosshair **Set here**, and use the correct-position flow when GPS is wrong.
 - [ ] **Locate:** walk between surveyed points; **Locate** picks the nearest point
