@@ -1,8 +1,6 @@
 package com.weartak.plugin.sextant
 
 import android.Manifest
-import androidx.core.graphics.drawable.toBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.Image
 import android.app.RemoteInput
 import android.content.ActivityNotFoundException
@@ -268,9 +266,6 @@ private fun WearTakHomeButton() {
         (listOfNotNull(HostTarget.hostPackageName) + listOf("com.aitech.weartak_civ", "com.aitech.weartak_civ.dev"))
             .firstOrNull { ctx.packageManager.getLaunchIntentForPackage(it) != null }
     } ?: return
-    val icon = remember(host) {
-        runCatching { ctx.packageManager.getApplicationIcon(host).toBitmap(96, 96).asImageBitmap() }.getOrNull()
-    }
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
         Button(
             onClick = {
@@ -278,11 +273,10 @@ private fun WearTakHomeButton() {
                     ctx.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
                 }
             },
-            colors = ButtonDefaults.buttonColors(backgroundColor = Color.Transparent),
-            modifier = Modifier.size(32.dp),
+            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF33363B)),
+            modifier = Modifier.size(28.dp),
         ) {
-            if (icon != null) Image(icon, contentDescription = "Open WearTAK", modifier = Modifier.size(32.dp))
-            else Text("W", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            Icon(painterResource(R.drawable.sextant_back), contentDescription = "Back to WearTAK", tint = Color.White, modifier = Modifier.size(18.dp))
         }
     }
 }
@@ -312,7 +306,6 @@ private fun HomeScreen(onOpen: (String) -> Unit, onAdd: () -> Unit) {
     SextantEngine.version // recompose when survey data changes
     ScalingLazyColumn(Modifier.fillMaxSize()) {
         item { WearTakHomeButton() }
-        item { Title("Sextant") }
         item { ActionChip("Add address", icon = R.drawable.markerdrop, onClick = onAdd) }
         items(SextantEngine.addresses.toList()) { a ->
             RowChip(a.name, roomsLabel(a.points.size)) { onOpen(a.id) }
