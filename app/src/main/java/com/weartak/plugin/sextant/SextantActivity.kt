@@ -218,7 +218,7 @@ private fun SextantApp() {
 }
 
 private val ROOM_PRESETS = listOf(
-    "Balcony", "Bathroom", "Bedroom", "Dining Room", "Door", "Elevator", "Kitchen", "Living Room", "Stairs",
+    "Balcony", "Bathroom", "Bedroom", "Dining Room", "Door", "Elevator", "Kitchen", "Living Room", "Stairs", "Yard",
 ).sortedWith(String.CASE_INSENSITIVE_ORDER)
 
 private val ROOM_ORDER = compareBy<SextantPoint, String>(String.CASE_INSENSITIVE_ORDER) { it.name }
