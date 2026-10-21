@@ -103,6 +103,12 @@ object SextantEngine {
         log("delete_address", JSONObject().put("address", a.id).put("name", a.name).put("points", a.points.size))
     }
 
+    fun renamePoint(a: SextantAddress, p: SextantPoint, name: String) {
+        val clean = name.trim().takeIf { it.isNotEmpty() } ?: return
+        p.name = clean; save(); touch()
+        log("rename_point", JSONObject().put("address", a.id).put("point", p.id).put("name", clean))
+    }
+
     fun deletePoint(a: SextantAddress, p: SextantPoint) {
         a.points.remove(p); save(); touch()
         log("delete_point", JSONObject().put("address", a.id).put("point", p.id))

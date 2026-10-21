@@ -196,7 +196,7 @@ private fun SextantApp() {
             is Screen.CorrectPick -> CorrectPickScreen(s.id, s.scan, s.guessed,
                 onPicked = { screen = Screen.Locate(s.id) },
                 onPlaceNew = { pointId -> screen = Screen.MapPlace(s.id, pointId, "Where are you?", Screen.Locate(s.id)) })
-            is Screen.PointDetail -> PointDetailScreen(s.id, s.pointId,
+            is Screen.PointDetail -> PointDetailScreen(s.id, s.pointId, listen,
                 onMap = { screen = Screen.MapPlace(s.id, s.pointId, "Adjust position", s) },
                 onDeleted = { screen = Screen.Address(s.id) })
         }
@@ -377,7 +377,7 @@ private fun FloorNameScreen(id: String, cap: Captured, listen: (String, (String)
             .focusRequester(focus).focusable()
     ) {
         item { Title("Point dropped · ${cap.scans.size} scans", Good) }
-        item { Small("Which floor? (turn the bezel)") }
+        item { Small("Which floor?") }
         item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
                 CompactChip(onClick = { floor-- }, label = { Text("−") }, colors = ChipDefaults.secondaryChipColors())
@@ -516,7 +516,7 @@ private fun CorrectPickScreen(id: String, scan: Map<String, Int>, guessed: Strin
 }
 
 @Composable
-private fun PointDetailScreen(id: String, pointId: String, onMap: () -> Unit, onDeleted: () -> Unit) {
+private fun PointDetailScreen(id: String, pointId: String, listen: (String, (String) -> Unit) -> Unit, onMap: () -> Unit, onDeleted: () -> Unit) {
     SextantEngine.version // recompose when survey data changes
     val a = SextantEngine.address(id) ?: return
     val p = a.points.firstOrNull { it.id == pointId } ?: return
@@ -532,6 +532,7 @@ private fun PointDetailScreen(id: String, pointId: String, onMap: () -> Unit, on
             })
         }
         p.stepsFromPrev?.let { item { Small("$it steps from previous point") } }
+        item { RowChip("Rename", p.name) { listen("Point name") { SextantEngine.renamePoint(a, p, it) } } }
         item { ActionChip("Correct position", icon = R.drawable.markerdrop, secondary = "place on map", onClick = onMap) }
         item {
             CompactChip(onClick = { if (confirm) { SextantEngine.deletePoint(a, p); onDeleted() } else confirm = true },
