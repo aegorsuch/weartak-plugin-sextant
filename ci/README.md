@@ -24,10 +24,10 @@ The WearTAK plugin SDK is not in this repository; `scripts/fetch-sdk.sh` pulls i
 
 Same scheme as WearTAK (WEARTAK-239), in `app/build.gradle.kts`:
 
-- `baseVersionCode` / `baseVersionName` (currently `580` / `5.8.0`), aligned with the
+- `baseVersionCode` / `baseVersionName` (currently `584` / `5.8.4`), aligned with the
   WearTAK 5.8 line. Bump them for each official `vX.Y.Z[.B]` tag.
 - CI builds: versionCode = `base * 10000 + CI_PIPELINE_IID` (build fails at IID ≥ 10000),
-  versionName = `<base>-p<IID>+<short sha>`, e.g. `5.8.0-p12+1a2b3c4d`. Every pipeline is
+  versionName = `<base>-p<IID>+<short sha>`, e.g. `5.8.4-p12+1a2b3c4d`. Every pipeline is
   therefore an in-place upgrade (MDMs such as Knox accept it).
 - Local builds: versionCode = base, versionName = base.
 

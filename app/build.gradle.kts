@@ -21,8 +21,8 @@ android {
         // Same scheme as WearTAK (WEARTAK-239): CI builds get a unique, increasing versionCode
         // per GitLab pipeline so MDMs such as Knox Manage accept each upload, and a versionName
         // that identifies the pipeline and commit. Bump the base for each official vX.Y.Z[.B] tag.
-        val baseVersionCode = 580
-        val baseVersionName = "5.8.0"
+        val baseVersionCode = 584
+        val baseVersionName = "5.8.4"
         val ciPipelineIid = System.getenv("CI_PIPELINE_IID")?.toIntOrNull()
         if (ciPipelineIid != null) {
             if (ciPipelineIid !in 0..9999) {
