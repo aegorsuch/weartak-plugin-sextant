@@ -218,7 +218,7 @@ private fun SextantApp() {
 }
 
 private val ROOM_PRESETS = listOf(
-    "Balcony", "Bathroom", "Bedroom", "Dining Room", "Door", "Elevator", "Kitchen", "Living Room", "Stairs", "Yard",
+    "Balcony", "Bathroom", "Bedroom", "Dining Room", "Elevator", "Exterior Door", "Interior Door", "Kitchen", "Living Room", "Stairs", "Yard",
 ).sortedWith(String.CASE_INSENSITIVE_ORDER)
 
 private val ROOM_ORDER = compareBy<SextantPoint, String>(String.CASE_INSENSITIVE_ORDER) { it.name }
@@ -424,6 +424,15 @@ private fun FloorNameScreen(id: String, cap: Captured, listen: (String, (String)
             .focusRequester(focus).focusable()
     ) {
         item { Title("Room marked · ${cap.scans.size} scans", Good) }
+        items(ROOM_PRESETS.chunked(2)) { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally), modifier = Modifier.fillMaxWidth()) {
+                row.forEach { n ->
+                    CompactChip(onClick = { name = n }, label = { Text(n, fontSize = 11.sp) },
+                        colors = if (name == n) ChipDefaults.chipColors(backgroundColor = AmberDark, contentColor = Color.White) else ChipDefaults.secondaryChipColors())
+                }
+            }
+        }
+        item { ActionChip("Name: $name", secondary = "tap to rename") { listen("Room name") { name = it } } }
         item { Small("Which floor?") }
         item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
@@ -436,12 +445,6 @@ private fun FloorNameScreen(id: String, cap: Captured, listen: (String, (String)
         item {
             val base = a.points.firstOrNull { it.pressure != null }
             Small(if (base == null) "First room sets the floor baseline" else "Barometer suggests L$suggested (vs ${base.name})")
-        }
-        item { ActionChip("Name: $name", secondary = "tap to rename") { listen("Room name") { name = it } } }
-        items(ROOM_PRESETS.chunked(2)) { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally), modifier = Modifier.fillMaxWidth()) {
-                row.forEach { n -> CompactChip(onClick = { name = n }, label = { Text(n, fontSize = 11.sp) }, colors = ChipDefaults.secondaryChipColors()) }
-            }
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
