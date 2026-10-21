@@ -67,6 +67,9 @@
                 <action android:name="com.weartak.plugin.action.PLUGIN_SERVICE" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <meta-data
+                android:name="com.weartak.plugin.MENU_SUBTITLE"
+                android:value="Unfunded Request" />
         </service>
     </application>
 </manifest>
