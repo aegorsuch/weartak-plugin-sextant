@@ -50,8 +50,10 @@ features, leave it unchecked and record **N/A** with the reason in the results.
   Correct position and Delete are icon-only (TalkBack still reads their names).
   **Estimate Location** shows its icon and text.
 - [ ] **No 0-scan rooms:** with recording **stopped**, mark a room; it still captures
-  scans. Capture waits for 5 Wi-Fi scans (ring shows `n/5`, about 30 s while recording)
+  scans. Capture waits for 9 Wi-Fi scans (ring shows `n/9`, about 1 min while recording)
   with no time limit; once at least 1 scan arrives, ✓ saves early and ✕ cancels.
+- [ ] **Walk-away capture:** start Mark room, set the watch on a desk and step away;
+  the screen stays on, all 9 scans arrive, and the watch buzzes twice when done.
 - [ ] **Emoji names:** name a room by voice with a word the keyboard turns into an
   emoji (e.g. "door" → 🚪); the room saves as text ("Door"), and older emoji names
   are converted to text after the update.
