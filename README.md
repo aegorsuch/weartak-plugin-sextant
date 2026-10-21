@@ -1,6 +1,6 @@
 # Sextant (WearTAK plugin)
 
-GNSS-denied indoor positioning for WearTAK on Wear OS. Survey a building by dropping points
+Wi-Fi mapping and triangulation for WearTAK on Wear OS. Survey a building by dropping points
 (Wi-Fi fingerprint + barometer floor + steps), then **Locate** to see which point you are nearest.
 Points are local only and are never sent as CoT.
 
