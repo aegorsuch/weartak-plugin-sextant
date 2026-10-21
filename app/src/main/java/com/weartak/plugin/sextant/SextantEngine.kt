@@ -91,7 +91,7 @@ object SextantEngine {
     }
 
     fun renameAddress(a: SextantAddress, name: String) {
-        val clean = name.trim().takeIf { it.isNotEmpty() } ?: return
+        val clean = cleanName(name).takeIf { it.isNotEmpty() } ?: return
         a.name = clean; save(); touch()
         log("rename_address", JSONObject().put("address", a.id).put("name", clean))
     }
@@ -115,7 +115,7 @@ object SextantEngine {
     }
 
     fun renamePoint(a: SextantAddress, p: SextantPoint, name: String) {
-        val clean = name.trim().takeIf { it.isNotEmpty() } ?: return
+        val clean = cleanName(name).takeIf { it.isNotEmpty() } ?: return
         p.name = clean; save(); touch()
         log("rename_point", JSONObject().put("address", a.id).put("point", p.id).put("name", clean))
     }
@@ -240,7 +240,10 @@ object SextantEngine {
                     for (k in 0 until sa.length()) {
                         val so = sa.getJSONObject(k); scans.add(so.keys().asSequence().associateWith { so.getInt(it) })
                     }
-                    pts.add(SextantPoint(po.getString("id"), po.getString("name"), po.getInt("floor"),
+                    val savedPointName = po.getString("name")
+                    val pointName = cleanName(savedPointName).ifEmpty { savedPointName }
+                    if (pointName != savedPointName) addressNameUpdated = true
+                    pts.add(SextantPoint(po.getString("id"), pointName, po.getInt("floor"),
                         po.optDoubleOrNull("hpa")?.toFloat(), po.optDoubleOrNull("lat"), po.optDoubleOrNull("lon"),
                         po.optDoubleOrNull("acc")?.toFloat(), po.optString("pos", "none"), po.optDoubleOrNull("stepsFromPrev")?.toLong(),
                         po.getLong("time"), scans))
@@ -249,7 +252,7 @@ object SextantEngine {
                 val name = if (savedName == "125 South Jefferson Street") {
                     addressNameUpdated = true
                     "125 S Jefferson St"
-                } else savedName
+                } else cleanName(savedName).ifEmpty { savedName }.also { if (it != savedName) addressNameUpdated = true }
                 addresses.add(SextantAddress(ao.getString("id"), name, pts))
             }
             if (addressNameUpdated) save()

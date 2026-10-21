@@ -25,8 +25,11 @@ features, leave it unchecked and record **N/A** with the reason in the results.
   addresses, points and floor names are still present.
 - [ ] **WearTAK binds the plugin:** with release WearTAK installed, Sextant appears
   in WearTAK's plugin list and stays connected (no trust/bind failure).
-- [ ] **Add address:** tapping **Add address** opens the system keyboard directly
-  (no chooser); voice and typed names both save, and the new name shows immediately.
+- [ ] **Add address:** tapping **Add address** opens the Samsung keyboard in typing
+  mode (no chooser); voice and typed names both save, and the new name shows immediately.
+- [ ] **Edit names:** editing an address or room name opens the keyboard with the
+  current name already filled in and the cursor at the end; ✓ or Done saves, ✕ or
+  Back leaves the name unchanged.
 - [ ] **Record and scan limit:** start recording; Wi-Fi scans run about every 6 s
   while recording. After **Stop**, `wifi_scan_throttle_enabled` is restored (1).
 - [ ] **Back button:** every screen except the address list shows a small back
@@ -46,7 +49,11 @@ features, leave it unchecked and record **N/A** with the reason in the results.
 - [ ] **Icon chips:** Mark room is `+ room`, Add address is `+ home`, Locate, Rescan,
   Correct position and Delete are icon-only (TalkBack still reads their names).
 - [ ] **No 0-scan rooms:** with recording **stopped**, mark a room; it still captures
-  scans. If no scan arrives in 15 s, the ring turns blue and waits up to 30 s more.
+  scans. Capture waits for 5 Wi-Fi scans (ring shows `n/5`, about 30 s while recording)
+  with no time limit; once at least 1 scan arrives, ✓ saves early and ✕ cancels.
+- [ ] **Emoji names:** name a room by voice with a word the keyboard turns into an
+  emoji (e.g. "door" → 🚪); the room saves as text ("Door"), and older emoji names
+  are converted to text after the update.
 - [ ] **Map placement / correct position:** set a point's position on the map with
   the crosshair **Set here**, and use the correct-position flow when GPS is wrong.
 - [ ] **Locate:** walk between surveyed points; **Locate** picks the nearest point

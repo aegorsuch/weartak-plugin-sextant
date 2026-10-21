@@ -45,6 +45,24 @@ class SextantEngineTest {
         assertTrue(store().readText().contains("125 S Jefferson St"))
     }
 
+    @Test fun loadRestoresEmojiRoomNames() {
+        val pt = JSONObject().put("id", "p1").put("name", "\uD83D\uDEAA").put("floor", 1).put("time", 0L).put("scans", JSONArray())
+        val root = JSONObject().put("addresses", JSONArray().put(
+            JSONObject().put("id", "a1").put("name", "Home").put("points", JSONArray().put(pt))))
+        store().writeText(root.toString())
+        SextantEngine.reloadForTest()
+        assertEquals("Door", SextantEngine.address("a1")?.points?.single()?.name)
+        assertTrue(store().readText().contains("\"Door\""))
+    }
+
+    @Test fun renamePointReplacesEmoji() {
+        val a = SextantEngine.addAddress("Home")
+        val p = point("Room", 1)
+        a.points.add(p)
+        SextantEngine.renamePoint(a, p, "Back \uD83D\uDEAA")
+        assertEquals("Back Door", p.name)
+    }
+
     @Test fun rescanReplacesScansAndKeepsRoomDetails() {
         val a = SextantEngine.addAddress("Home")
         val p = point("Stairs", 6, 1000f)
