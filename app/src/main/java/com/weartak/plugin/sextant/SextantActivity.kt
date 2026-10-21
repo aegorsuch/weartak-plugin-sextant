@@ -19,10 +19,12 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,6 +34,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -50,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -57,6 +61,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.items
+import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.ButtonDefaults
 import androidx.wear.compose.material.Chip
@@ -328,12 +333,13 @@ private fun DeleteChip(label: String, confirm: Boolean, subject: Int? = null, on
 )
 
 @Composable
-private fun SmallRoundButton(icon: Int, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) = Button(
-    onClick = onClick,
-    colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF33363B)),
-    modifier = modifier.size(28.dp),
+private fun SmallRoundButton(icon: Int, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) = Box(
+    modifier = modifier.size(48.dp).clickable(role = Role.Button, onClick = onClick),
+    contentAlignment = Alignment.Center,
 ) {
-    Icon(painterResource(icon), contentDescription = label, tint = Color.White, modifier = Modifier.size(18.dp))
+    Box(Modifier.size(28.dp).background(Color(0xFF33363B), CircleShape), contentAlignment = Alignment.Center) {
+        Icon(painterResource(icon), contentDescription = label, tint = Color.White, modifier = Modifier.size(18.dp))
+    }
 }
 
 @Composable
@@ -344,17 +350,15 @@ private fun WearTakHomeButton() {
             .firstOrNull { ctx.packageManager.getLaunchIntentForPackage(it) != null }
     } ?: return
     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Button(
+        SmallRoundButton(
+            R.drawable.sextant_back,
+            "Back to WearTAK",
             onClick = {
                 ctx.packageManager.getLaunchIntentForPackage(host)?.let {
                     ctx.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
                 }
             },
-            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF33363B)),
-            modifier = Modifier.size(28.dp),
-        ) {
-            Icon(painterResource(R.drawable.sextant_back), contentDescription = "Back to WearTAK", tint = Color.White, modifier = Modifier.size(18.dp))
-        }
+        )
     }
 }
 
@@ -381,7 +385,13 @@ private fun RowChip(label: String, secondary: String? = null, icon: Int? = null,
 @Composable
 private fun HomeScreen(onOpen: (String) -> Unit, onAdd: () -> Unit) {
     SextantEngine.version // recompose when survey data changes
-    ScalingLazyColumn(Modifier.fillMaxSize()) {
+    ScalingLazyColumn(
+        Modifier.fillMaxSize(),
+        state = rememberScalingLazyListState(initialCenterItemIndex = 0),
+        autoCentering = null,
+        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Top),
+        contentPadding = PaddingValues(start = 10.dp, top = 6.dp, end = 10.dp, bottom = 10.dp),
+    ) {
         item { WearTakHomeButton() }
         item { IconChip(listOf(R.drawable.sextant_add, R.drawable.sextant_home), "Add address", onClick = onAdd) }
         items(SextantEngine.addresses.toList()) { a ->
