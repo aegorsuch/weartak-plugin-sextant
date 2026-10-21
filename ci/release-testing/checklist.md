@@ -40,6 +40,10 @@ features, leave it unchecked and record **N/A** with the reason in the results.
   stand still for the capture; the scan count updates and name, floor and map pin are unchanged.
 - [ ] **Icons:** stats show as icons (Wi-Fi, floor, GPS, barometer, steps); record/stop,
   cancel, skip and set-here are icon buttons; no leftover helper text duplicates an icon.
+- [ ] **Icon chips:** Mark room is `+ room`, Add address is `+ home`, Locate, Rescan,
+  Correct position and Delete are icon-only (TalkBack still reads their names).
+- [ ] **No 0-scan rooms:** with recording **stopped**, mark a room; it still captures
+  scans. If no scan arrives in 15 s, the ring turns blue and waits up to 30 s more.
 - [ ] **Map placement / correct position:** set a point's position on the map with
   the crosshair **Set here**, and use the correct-position flow when GPS is wrong.
 - [ ] **Locate:** walk between surveyed points; **Locate** picks the nearest point
