@@ -51,6 +51,8 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
 import androidx.wear.compose.foundation.lazy.items
+import androidx.wear.compose.material.Button
+import androidx.wear.compose.material.ButtonDefaults
 import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.CircularProgressIndicator
@@ -179,9 +181,11 @@ private fun SextantApp() {
             is Screen.Capture -> CaptureScreen(s.id,
                 onDone = { screen = Screen.FloorName(s.id, it) },
                 onCancel = { screen = Screen.Address(s.id) })
-            is Screen.FloorName -> FloorNameScreen(s.id, s.cap, listen) { pointId, name ->
-                screen = Screen.MapPlace(s.id, pointId, "Where is $name?", Screen.Address(s.id))
-            }
+            is Screen.FloorName -> FloorNameScreen(s.id, s.cap, listen,
+                onSaved = { pointId, name, pin ->
+                    screen = if (pin) Screen.MapPlace(s.id, pointId, "Where is $name?", Screen.Address(s.id)) else Screen.Address(s.id)
+                },
+                onBack = { screen = Screen.Address(s.id) })
             is Screen.MapPlace -> MapPlaceScreen(s.id, s.pointId, s.title,
                 onSet = { lat, lon ->
                     SextantEngine.address(s.id)?.let { a ->
@@ -244,6 +248,15 @@ private fun ActionChip(label: String, icon: Int? = null, secondary: String? = nu
 )
 
 @Composable
+private fun IconAction(icon: Int, label: String, background: Color, tint: Color, onClick: () -> Unit) = Button(
+    onClick = onClick,
+    colors = ButtonDefaults.buttonColors(backgroundColor = background),
+    modifier = Modifier.size(ButtonDefaults.DefaultButtonSize),
+) {
+    Icon(painterResource(icon), contentDescription = label, tint = tint, modifier = Modifier.size(24.dp))
+}
+
+@Composable
 private fun RowChip(label: String, secondary: String? = null, icon: Int? = null, onClick: () -> Unit) = Chip(
     onClick = onClick,
     label = { Text(label) },
@@ -285,7 +298,7 @@ private fun AddressScreen(id: String, onDrop: () -> Unit, onLocate: () -> Unit, 
         if (SextantEngine.recording && aps in 1 until SextantEngine.MIN_APS) {
             item { Small("⚠ Only $aps Wi-Fi networks visible. Rooms may blur together.", Weak) }
         }
-        item { ActionChip("Drop room", icon = R.drawable.markerdrop, secondary = "$aps Wi-Fi networks", onClick = onDrop) }
+        item { ActionChip("Mark room", icon = R.drawable.markerdrop, secondary = "$aps Wi-Fi networks", onClick = onDrop) }
         if (a.points.size >= 2) item { RowChip("Locate", "Which room am I in?") { onLocate() } }
         items(a.points.sortedWith(ROOM_ORDER)) { p ->
             val pos = when (p.posSource) { "manual" -> "pinned"; "gps" -> "GPS ±${p.acc?.roundToInt() ?: "?"} m"; else -> "no position" }
@@ -311,7 +324,6 @@ private fun AddressScreen(id: String, onDrop: () -> Unit, onLocate: () -> Unit, 
             )
         }
         if (confirmDelete) item { Small("Removes ${a.points.size} rooms. Walk log is kept.", Weak) }
-        item { Small("Export: adb pull …/files/sextant") }
     }
 }
 
@@ -361,7 +373,7 @@ private fun CaptureScreen(id: String, onDone: (Captured) -> Unit, onCancel: () -
 }
 
 @Composable
-private fun FloorNameScreen(id: String, cap: Captured, listen: (String, (String) -> Unit) -> Unit, onSaved: (String, String) -> Unit) {
+private fun FloorNameScreen(id: String, cap: Captured, listen: (String, (String) -> Unit) -> Unit, onSaved: (String, String, Boolean) -> Unit, onBack: () -> Unit) {
     val a = SextantEngine.address(id) ?: return
     val suggested = SextantEngine.estimateFloor(a, cap.hpa) ?: a.points.lastOrNull()?.floor ?: 1
     var floor by remember { mutableIntStateOf(suggested) }
@@ -369,20 +381,20 @@ private fun FloorNameScreen(id: String, cap: Captured, listen: (String, (String)
     var acc by remember { mutableFloatStateOf(0f) }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
-    fun save() {
+    fun save(pin: Boolean) {
         val p = SextantPoint(UUID.randomUUID().toString(), name, floor, cap.hpa, cap.lat, cap.lon, cap.acc,
             if (cap.lat != null) "gps" else "none", cap.stepsFromPrev, System.currentTimeMillis(), cap.scans.toMutableList())
         a.points.add(p); SextantEngine.save(); SextantEngine.touch()
         SextantEngine.log("drop", JSONObject().put("address", a.id).put("point", p.id).put("name", name)
             .put("floor", floor).put("hpa", cap.hpa).put("scans", cap.scans.size).put("stepsFromPrev", cap.stepsFromPrev))
-        onSaved(p.id, name)
+        onSaved(p.id, name, pin)
     }
     ScalingLazyColumn(
         Modifier.fillMaxSize()
             .onRotaryScrollEvent { e -> acc += e.verticalScrollPixels; if (acc > 60) { floor++; acc = 0f } else if (acc < -60) { floor--; acc = 0f }; true }
             .focusRequester(focus).focusable()
     ) {
-        item { Title("Room dropped · ${cap.scans.size} scans", Good) }
+        item { Title("Room marked · ${cap.scans.size} scans", Good) }
         item { Small("Which floor?") }
         item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
@@ -403,9 +415,14 @@ private fun FloorNameScreen(id: String, cap: Captured, listen: (String, (String)
             }
         }
         item {
-            Chip(onClick = { save() }, label = { Text("Save · set on map", fontWeight = FontWeight.Medium, color = Color.Black) },
-                colors = ChipDefaults.chipColors(backgroundColor = Amber), modifier = Modifier.fillMaxWidth())
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
+                IconAction(R.drawable.sextant_back, "Back", Color(0xFF33363B), tint = Color.White, onClick = onBack)
+                IconAction(R.drawable.sextant_save, "Save", AmberDark, tint = Color.White) { save(pin = false) }
+                IconAction(R.drawable.markerdrop, "Pin on map", Amber, tint = Color.Unspecified) { save(pin = true) }
+            }
         }
+        item { Small("Back · Save · Pin on map") }
     }
 }
 
