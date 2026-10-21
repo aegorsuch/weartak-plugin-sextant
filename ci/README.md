@@ -12,6 +12,12 @@ template. TAK.gov (`git.tak.gov/weartak-plugins/weartak-plugin-sextant`) is cano
 | Push to protected `main` | tests, `main_release` (production-signed APK, 30-day artifact), then `publish_github_main` |
 | Tag `vX.Y.Z[.B]` | tests, `official_release` (production-signed APK, kept forever) |
 
+`unit_tests` runs `:app:testDebugUnitTest`, and a failure blocks the release. It covers the
+plugin binder (`SextantPluginBinderTest`), floor/room labels, room presets and sort order
+(`SextantLabelsTest`), and engine logic: address rename and migration, room rescan and
+persistence, barometer floor estimate, and Wi-Fi locate (`SextantEngineTest`). Run it locally with
+`./gradlew :app:testDebugUnitTest`.
+
 Release builds are signed with the **WearTAK production key** and the job fails unless the
 APK signer SHA-256 is `1579b600…348d`. Release WearTAK only binds plugins with the same
 signature (signature-level `BIND_PLUGIN`), so debug builds only work with WearTAK `.dev`.
