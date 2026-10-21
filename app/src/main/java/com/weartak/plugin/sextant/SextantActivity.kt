@@ -212,6 +212,12 @@ private fun SextantApp() {
     }
 }
 
+private val ROOM_PRESETS = listOf(
+    "Balcony", "Bedroom", "Dining Room", "Door", "Elevator", "Kitchen", "Living Room", "Stairs",
+).sortedWith(String.CASE_INSENSITIVE_ORDER)
+
+private val ROOM_ORDER = compareBy<SextantPoint, String>(String.CASE_INSENSITIVE_ORDER) { it.name }
+
 private fun addrIdOf(s: Screen): String = when (s) {
     is Screen.Address -> s.id; is Screen.Capture -> s.id; is Screen.FloorName -> s.id; is Screen.MapPlace -> s.id
     is Screen.Locate -> s.id; is Screen.CorrectPick -> s.id; is Screen.PointDetail -> s.id; Screen.Home -> ""
@@ -255,7 +261,7 @@ private fun HomeScreen(onOpen: (String) -> Unit, onAdd: () -> Unit) {
         item { Title("Sextant") }
         item { ActionChip("Add address", secondary = "name it after", onClick = onAdd) }
         items(SextantEngine.addresses.toList()) { a ->
-            RowChip(a.name, "${a.points.size} points") { onOpen(a.id) }
+            RowChip(a.name, "${a.points.size} rooms") { onOpen(a.id) }
         }
         item { Small("Local only · nothing is sent as CoT") }
     }
@@ -269,7 +275,7 @@ private fun AddressScreen(id: String, onDrop: () -> Unit, onLocate: () -> Unit, 
     var confirmDelete by remember { mutableStateOf(false) }
     val aps = SextantEngine.lastScan.size
     ScalingLazyColumn(Modifier.fillMaxSize()) {
-        item { Title("${a.name} · ${a.points.size} points") }
+        item { Title("${a.name} · ${a.points.size} rooms") }
         item {
             val steps = SextantEngine.stepsSinceStart()
             val rec = if (SextantEngine.recording) "● Recording · ${SextantEngine.scanCount} scans" +
@@ -279,9 +285,9 @@ private fun AddressScreen(id: String, onDrop: () -> Unit, onLocate: () -> Unit, 
         if (SextantEngine.recording && aps in 1 until SextantEngine.MIN_APS) {
             item { Small("⚠ Only $aps Wi-Fi networks visible. Rooms may blur together.", Weak) }
         }
-        item { ActionChip("Drop point", icon = R.drawable.markerdrop, secondary = "$aps Wi-Fi networks", onClick = onDrop) }
-        if (a.points.size >= 2) item { RowChip("Locate", "Which point am I nearest?") { onLocate() } }
-        items(a.points.toList()) { p ->
+        item { ActionChip("Drop room", icon = R.drawable.markerdrop, secondary = "$aps Wi-Fi networks", onClick = onDrop) }
+        if (a.points.size >= 2) item { RowChip("Locate", "Which room am I in?") { onLocate() } }
+        items(a.points.sortedWith(ROOM_ORDER)) { p ->
             val pos = when (p.posSource) { "manual" -> "pinned"; "gps" -> "GPS ±${p.acc?.roundToInt() ?: "?"} m"; else -> "no position" }
             RowChip(p.name, "L${p.floor} · ${p.scans.size} scans · $pos", R.drawable.sextant_pin) { onPoint(p.id) }
         }
@@ -304,7 +310,7 @@ private fun AddressScreen(id: String, onDrop: () -> Unit, onLocate: () -> Unit, 
                 colors = ChipDefaults.chipColors(backgroundColor = if (confirmDelete) Color(0xFF8B1A1A) else Color(0xFF33363B)),
             )
         }
-        if (confirmDelete) item { Small("Removes ${a.points.size} points. Walk log is kept.", Weak) }
+        if (confirmDelete) item { Small("Removes ${a.points.size} rooms. Walk log is kept.", Weak) }
         item { Small("Export: adb pull …/files/sextant") }
     }
 }
@@ -359,7 +365,7 @@ private fun FloorNameScreen(id: String, cap: Captured, listen: (String, (String)
     val a = SextantEngine.address(id) ?: return
     val suggested = SextantEngine.estimateFloor(a, cap.hpa) ?: a.points.lastOrNull()?.floor ?: 1
     var floor by remember { mutableIntStateOf(suggested) }
-    var name by remember { mutableStateOf("Point ${a.points.size + 1}") }
+    var name by remember { mutableStateOf("Room ${a.points.size + 1}") }
     var acc by remember { mutableFloatStateOf(0f) }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
@@ -376,7 +382,7 @@ private fun FloorNameScreen(id: String, cap: Captured, listen: (String, (String)
             .onRotaryScrollEvent { e -> acc += e.verticalScrollPixels; if (acc > 60) { floor++; acc = 0f } else if (acc < -60) { floor--; acc = 0f }; true }
             .focusRequester(focus).focusable()
     ) {
-        item { Title("Point dropped · ${cap.scans.size} scans", Good) }
+        item { Title("Room dropped · ${cap.scans.size} scans", Good) }
         item { Small("Which floor?") }
         item {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
@@ -388,17 +394,12 @@ private fun FloorNameScreen(id: String, cap: Captured, listen: (String, (String)
         }
         item {
             val base = a.points.firstOrNull { it.pressure != null }
-            Small(if (base == null) "First point sets the floor baseline" else "Barometer suggests L$suggested (vs ${base.name})")
+            Small(if (base == null) "First room sets the floor baseline" else "Barometer suggests L$suggested (vs ${base.name})")
         }
-        item { ActionChip("Name: $name", secondary = "tap to rename") { listen("Point name") { name = it } } }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf("Door", "Elevator", "Stairs").forEach { n -> CompactChip(onClick = { name = n }, label = { Text(n, fontSize = 11.sp) }, colors = ChipDefaults.secondaryChipColors()) }
-            }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf("Kitchen", "Bedroom", "Balcony").forEach { n -> CompactChip(onClick = { name = n }, label = { Text(n, fontSize = 11.sp) }, colors = ChipDefaults.secondaryChipColors()) }
+        item { ActionChip("Name: $name", secondary = "tap to rename") { listen("Room name") { name = it } } }
+        items(ROOM_PRESETS.chunked(2)) { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally), modifier = Modifier.fillMaxWidth()) {
+                row.forEach { n -> CompactChip(onClick = { name = n }, label = { Text(n, fontSize = 11.sp) }, colors = ChipDefaults.secondaryChipColors()) }
             }
         }
         item {
@@ -476,7 +477,7 @@ private fun LocateScreen(id: String, onCorrect: (Map<String, Int>, String?) -> U
         CircularProgressIndicator(progress = (top?.prob ?: 0.0).toFloat(), modifier = Modifier.fillMaxSize().padding(2.dp),
             indicatorColor = Blue, strokeWidth = 6.dp)
         Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(horizontal = 24.dp)) {
-            Text("NEAREST POINT", fontSize = 12.sp, color = Color.Gray)
+            Text("NEAREST ROOM", fontSize = 12.sp, color = Color.Gray)
             Text(top?.point?.name ?: "Scanning…", fontSize = 22.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center)
             if (top != null) Text("${(top.prob * 100).roundToInt()}%", fontSize = 30.sp, fontWeight = FontWeight.Medium)
             guesses.getOrNull(1)?.let { Small("2nd: ${it.point.name} ${(it.prob * 100).roundToInt()}%") }
@@ -497,16 +498,16 @@ private fun CorrectPickScreen(id: String, scan: Map<String, Int>, guessed: Strin
     ScalingLazyColumn(Modifier.fillMaxSize()) {
         item { Title("Where are you really?") }
         item {
-            ActionChip("Place on map", icon = R.drawable.markerdrop, secondary = "new point here") {
+            ActionChip("Place on map", icon = R.drawable.markerdrop, secondary = "new room here") {
                 val fl = SextantEngine.estimateFloor(a, SextantEngine.pressure) ?: a.points.lastOrNull()?.floor ?: 1
-                val p = SextantPoint(UUID.randomUUID().toString(), "Point ${a.points.size + 1}", fl, SextantEngine.pressure,
+                val p = SextantPoint(UUID.randomUUID().toString(), "Room ${a.points.size + 1}", fl, SextantEngine.pressure,
                     null, null, null, "none", null, System.currentTimeMillis(), mutableListOf(scan))
                 a.points.add(p); SextantEngine.save(); SextantEngine.touch()
                 SextantEngine.log("correct_new", JSONObject().put("address", a.id).put("point", p.id).put("guessed", guessed))
                 onPlaceNew(p.id)
             }
         }
-        items(a.points.toList()) { p ->
+        items(a.points.sortedWith(ROOM_ORDER)) { p ->
             RowChip(p.name, if (p.id == guessed) "watch guessed this · confirm" else "L${p.floor} · add this scan", R.drawable.sextant_pin) {
                 SextantEngine.correct(a, p, scan, a.points.firstOrNull { it.id == guessed })
                 onPicked()
@@ -531,12 +532,12 @@ private fun PointDetailScreen(id: String, pointId: String, listen: (String, (Str
                 else -> "No position yet"
             })
         }
-        p.stepsFromPrev?.let { item { Small("$it steps from previous point") } }
-        item { RowChip("Rename", p.name) { listen("Point name") { SextantEngine.renamePoint(a, p, it) } } }
+        p.stepsFromPrev?.let { item { Small("$it steps from previous room") } }
+        item { RowChip("Rename", p.name) { listen("Room name") { SextantEngine.renamePoint(a, p, it) } } }
         item { ActionChip("Correct position", icon = R.drawable.markerdrop, secondary = "place on map", onClick = onMap) }
         item {
             CompactChip(onClick = { if (confirm) { SextantEngine.deletePoint(a, p); onDeleted() } else confirm = true },
-                label = { Text(if (confirm) "Tap again to delete" else "Delete point") },
+                label = { Text(if (confirm) "Tap again to delete" else "Delete room") },
                 colors = ChipDefaults.chipColors(backgroundColor = if (confirm) Color(0xFF8B1A1A) else Color(0xFF33363B)))
         }
     }
