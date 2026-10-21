@@ -278,11 +278,11 @@ private fun WearTakHomeButton() {
                     ctx.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
                 }
             },
-            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF33363B)),
-            modifier = Modifier.size(ButtonDefaults.SmallButtonSize),
+            colors = ButtonDefaults.buttonColors(backgroundColor = Color.Transparent),
+            modifier = Modifier.size(32.dp),
         ) {
-            if (icon != null) Image(icon, contentDescription = "Open WearTAK", modifier = Modifier.size(28.dp))
-            else Text("W", fontWeight = FontWeight.Bold)
+            if (icon != null) Image(icon, contentDescription = "Open WearTAK", modifier = Modifier.size(32.dp))
+            else Text("W", fontWeight = FontWeight.Bold, fontSize = 12.sp)
         }
     }
 }
@@ -311,8 +311,8 @@ private fun RowChip(label: String, secondary: String? = null, icon: Int? = null,
 private fun HomeScreen(onOpen: (String) -> Unit, onAdd: () -> Unit) {
     SextantEngine.version // recompose when survey data changes
     ScalingLazyColumn(Modifier.fillMaxSize()) {
-        item { Title("Sextant") }
         item { WearTakHomeButton() }
+        item { Title("Sextant") }
         item { ActionChip("Add address", icon = R.drawable.markerdrop, onClick = onAdd) }
         items(SextantEngine.addresses.toList()) { a ->
             RowChip(a.name, roomsLabel(a.points.size)) { onOpen(a.id) }
