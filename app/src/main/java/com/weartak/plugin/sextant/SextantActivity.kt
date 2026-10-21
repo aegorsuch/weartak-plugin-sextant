@@ -1,6 +1,9 @@
 package com.weartak.plugin.sextant
 
 import android.Manifest
+import androidx.core.graphics.drawable.toBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.foundation.Image
 import android.app.RemoteInput
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -250,6 +253,41 @@ private fun ActionChip(label: String, icon: Int? = null, secondary: String? = nu
 )
 
 @Composable
+private fun DeleteChip(label: String, confirm: Boolean, onClick: () -> Unit) = Chip(
+    onClick = onClick,
+    label = { Text(if (confirm) "Tap again to delete" else label, fontWeight = FontWeight.Medium) },
+    icon = { Icon(painterResource(R.drawable.sextant_delete), contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp)) },
+    colors = ChipDefaults.chipColors(backgroundColor = if (confirm) Color(0xFFB3261E) else Color(0xFF5C1F1F), contentColor = Color.White),
+    modifier = Modifier.fillMaxWidth(),
+)
+
+@Composable
+private fun WearTakHomeButton() {
+    val ctx = LocalContext.current
+    val host = remember {
+        (listOfNotNull(HostTarget.hostPackageName) + listOf("com.aitech.weartak_civ", "com.aitech.weartak_civ.dev"))
+            .firstOrNull { ctx.packageManager.getLaunchIntentForPackage(it) != null }
+    } ?: return
+    val icon = remember(host) {
+        runCatching { ctx.packageManager.getApplicationIcon(host).toBitmap(96, 96).asImageBitmap() }.getOrNull()
+    }
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Button(
+            onClick = {
+                ctx.packageManager.getLaunchIntentForPackage(host)?.let {
+                    ctx.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
+                }
+            },
+            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF33363B)),
+            modifier = Modifier.size(ButtonDefaults.SmallButtonSize),
+        ) {
+            if (icon != null) Image(icon, contentDescription = "Open WearTAK", modifier = Modifier.size(28.dp))
+            else Text("W", fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
 private fun IconAction(icon: Int, label: String, background: Color, tint: Color, onClick: () -> Unit) = Button(
     onClick = onClick,
     colors = ButtonDefaults.buttonColors(backgroundColor = background),
@@ -274,6 +312,7 @@ private fun HomeScreen(onOpen: (String) -> Unit, onAdd: () -> Unit) {
     SextantEngine.version // recompose when survey data changes
     ScalingLazyColumn(Modifier.fillMaxSize()) {
         item { Title("Sextant") }
+        item { WearTakHomeButton() }
         item { ActionChip("Add address", icon = R.drawable.markerdrop, onClick = onAdd) }
         items(SextantEngine.addresses.toList()) { a ->
             RowChip(a.name, roomsLabel(a.points.size)) { onOpen(a.id) }
@@ -313,16 +352,12 @@ private fun AddressScreen(id: String, onDrop: () -> Unit, onLocate: () -> Unit, 
             )
         }
         item {
-            CompactChip(
-                onClick = {
-                    if (confirmDelete) {
-                        if (SextantEngine.recording) SextantService.stop(ctx)
-                        SextantEngine.deleteAddress(a); onDeleted()
-                    } else confirmDelete = true
-                },
-                label = { Text(if (confirmDelete) "Tap again to delete" else "Delete address") },
-                colors = ChipDefaults.chipColors(backgroundColor = if (confirmDelete) Color(0xFF8B1A1A) else Color(0xFF33363B)),
-            )
+            DeleteChip("Delete address", confirmDelete) {
+                if (confirmDelete) {
+                    if (SextantEngine.recording) SextantService.stop(ctx)
+                    SextantEngine.deleteAddress(a); onDeleted()
+                } else confirmDelete = true
+            }
         }
         if (confirmDelete) item { Small("Removes ${roomsLabel(a.points.size)}. Walk log is kept.", Weak) }
     }
@@ -554,9 +589,7 @@ private fun PointDetailScreen(id: String, pointId: String, listen: (String, (Str
         item { RowChip("Rename", p.name) { listen("Room name") { SextantEngine.renamePoint(a, p, it) } } }
         item { ActionChip("Correct position", icon = R.drawable.markerdrop, secondary = "place on map", onClick = onMap) }
         item {
-            CompactChip(onClick = { if (confirm) { SextantEngine.deletePoint(a, p); onDeleted() } else confirm = true },
-                label = { Text(if (confirm) "Tap again to delete" else "Delete room") },
-                colors = ChipDefaults.chipColors(backgroundColor = if (confirm) Color(0xFF8B1A1A) else Color(0xFF33363B)))
+            DeleteChip("Delete room", confirm) { if (confirm) { SextantEngine.deletePoint(a, p); onDeleted() } else confirm = true }
         }
     }
 }
