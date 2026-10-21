@@ -10,6 +10,9 @@ import androidx.compose.foundation.Image
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.VibrationEffect
+import android.os.Vibrator
+import androidx.compose.ui.platform.LocalView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -527,11 +530,18 @@ private fun AddressScreen(
 }
 
 @SuppressLint("MissingPermission")
+private fun buzzDone(ctx: Context) = runCatching {
+    @Suppress("DEPRECATION")
+    ctx.getSystemService(Vibrator::class.java)
+        .vibrate(VibrationEffect.createWaveform(longArrayOf(0, 200, 150, 200), -1))
+}
+
+@SuppressLint("MissingPermission")
 @Composable
 private fun CaptureScreen(id: String, trackSteps: Boolean = true, onDone: (Captured) -> Unit, onCancel: () -> Unit) {
     val ctx = LocalContext.current
     val wifi = remember { ctx.applicationContext.getSystemService(WifiManager::class.java) }
-    val target = 5
+    val target = 9
     var elapsed by remember { mutableIntStateOf(0) }
     var finishEarly by remember { mutableStateOf(false) }
     val scans = remember { mutableListOf<Map<String, Int>>() }
@@ -549,6 +559,12 @@ private fun CaptureScreen(id: String, trackSteps: Boolean = true, onDone: (Captu
         ctx.registerReceiver(r, IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION))
         onDispose { SextantEngine.scanListeners.remove(l); runCatching { ctx.unregisterReceiver(r) } }
     }
+    // Keeps the capture running if the watch is left on a desk and the screen would otherwise time out.
+    val view = LocalView.current
+    DisposableEffect(view) {
+        view.keepScreenOn = true
+        onDispose { view.keepScreenOn = false }
+    }
     fun requestScan() {
         @Suppress("DEPRECATION")
         if (SextantEngine.recording) SextantService.scanNow(ctx) else runCatching { wifi.startScan() }
@@ -561,6 +577,7 @@ private fun CaptureScreen(id: String, trackSteps: Boolean = true, onDone: (Captu
             delay(1000); elapsed++
             if (elapsed % 6 == 0) requestScan()
         }
+        if (!finishEarly) buzzDone(ctx)
         val all = scans.toMutableList()
         if (all.isEmpty() && SextantEngine.lastScan.isNotEmpty() &&
             System.currentTimeMillis() - SextantEngine.lastScanAtMs < 45_000) all.add(SextantEngine.lastScan)
