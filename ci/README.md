@@ -57,9 +57,10 @@ Safety rules (identical to WearOS, see `ci/publish_github_release.py`):
    `weartak-plugins` group inherit them; elsewhere they need separate approval.
 2. Protect `main` on git.tak.gov.
 3. Create tag `TAK.gov-Forge-CI-CD-Pipeline-Release` on a commit already in the GitHub mirror.
-4. Fine-grained GitHub token scoped only to `aegorsuch/weartak-plugin-sextant` with
-   **Contents: read and write**; add it as GitLab variable `SEXTANT_GITHUB_TOKEN`
-   (masked, protected, hidden, no expansion).
+4. GitHub token able to write releases on `aegorsuch/weartak-plugin-sextant`: a classic
+   token with only the `public_repo` scope (the mirror is public), or a fine-grained token
+   scoped to this repository with **Contents: read and write**. Add it as GitLab variable
+   `SEXTANT_GITHUB_TOKEN` (masked, protected, hidden, no expansion).
 5. If `CI_JOB_TOKEN` cannot read the template, add `SDK_READ_TOKEN` (read_repository).
 
 ## Release testing
