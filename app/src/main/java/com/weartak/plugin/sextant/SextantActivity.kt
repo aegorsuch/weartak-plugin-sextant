@@ -242,18 +242,6 @@ private fun SextantApp() {
     }
 }
 
-private val ROOM_PRESETS = listOf(
-    "Balcony", "Bathroom", "Bedroom", "Dining Room", "Elevator", "Exterior Door", "Interior Door", "Kitchen", "Living Room", "Office", "Parking", "Stairs", "Yard",
-).sortedWith(String.CASE_INSENSITIVE_ORDER)
-
-private val ROOM_ORDER = compareBy<SextantPoint, String>(String.CASE_INSENSITIVE_ORDER) { it.name }.thenBy { it.floor }
-
-private fun floorLabel(floor: Int) = if (floor < 0) "-%02d".format(-floor) else "%02d".format(floor)
-
-/** Same-named rooms (e.g. several Stairs) are told apart by their floor: "Stairs 06", "Stairs 07". */
-private fun roomLabel(a: SextantAddress, p: SextantPoint): String =
-    if (a.points.count { it.name.equals(p.name, ignoreCase = true) } > 1) "${p.name} ${floorLabel(p.floor)}" else p.name
-
 private fun roomsLabel(n: Int) = if (n == 1) "1 Room" else "$n Rooms"
 
 /** Floor, scan count and position source for a room, as icon stats. */

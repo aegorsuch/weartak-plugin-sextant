@@ -76,6 +76,11 @@ object SextantEngine {
 
     fun touch() { version++ }
 
+    /** Tests only: drop in-memory state and re-read sextant.json. */
+    internal fun reloadForTest() {
+        addresses.clear(); ssidByBssid.clear(); load(); touch()
+    }
+
     fun dir(): File = (app.getExternalFilesDir("sextant") ?: File(app.filesDir, "sextant")).apply { mkdirs() }
 
     fun address(id: String?) = addresses.firstOrNull { it.id == id }
