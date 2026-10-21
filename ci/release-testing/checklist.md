@@ -46,13 +46,16 @@ features, leave it unchecked and record **N/A** with the reason in the results.
   stand still for the capture; the scan count updates and name, floor and map pin are unchanged.
 - [ ] **Icons:** stats show as icons (Wi-Fi, floor, GPS, barometer, steps); record/stop,
   cancel, skip and set-here are icon buttons; no leftover helper text duplicates an icon.
-- [ ] **Icon chips:** Mark room is `+ room`, Add address is `+ home`; Rescan,
-  Correct position and Delete are icon-only (TalkBack still reads their names).
-  **Estimate Location** shows its icon and text.
-- [ ] **No 0-scan rooms:** with recording **stopped**, mark a room; it still captures
-  scans. Capture waits for 9 Wi-Fi scans (ring shows `n/9`, about 1 min while recording)
+- [ ] **Icon chips:** Add address is `+ home`. **Add New Room** and **Delete Address**
+  are text-only; **Estimate Location** shows its icon and text.
+- [ ] **Room actions:** a room's detail screen shows one row of four round buttons —
+  pencil (change name), scan (rescan), map + pin (pin on map) and trash (delete; tap
+  once to turn it red, again to delete). TalkBack reads each button's name.
+- [ ] **No 0-scan rooms:** with recording **stopped**, tap Add New Room; recording
+  starts automatically and the first scan arrives within a few seconds (never stuck at
+  `0/9`). Capture waits for 9 Wi-Fi scans (ring shows `n/9`, about 1 min)
   with no time limit; once at least 1 scan arrives, ✓ saves early and ✕ cancels.
-- [ ] **Walk-away capture:** start Mark room, set the watch on a desk and step away;
+- [ ] **Walk-away capture:** start Add New Room, set the watch on a desk and step away;
   the screen stays on, all 9 scans arrive, and the watch buzzes twice when done.
 - [ ] **Emoji names:** name a room by voice with a word the keyboard turns into an
   emoji (e.g. "door" → 🚪); the room saves as text ("Door"), and older emoji names

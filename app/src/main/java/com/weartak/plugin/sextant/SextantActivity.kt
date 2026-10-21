@@ -320,13 +320,15 @@ private fun IconChip(icons: List<Int>, label: String, stats: List<Stat>? = null,
 )
 
 @Composable
-private fun DeleteChip(label: String, confirm: Boolean, subject: Int? = null, onClick: () -> Unit) = Chip(
+private fun DeleteChip(label: String, confirm: Boolean, subject: Int? = null, showIcon: Boolean = true, onClick: () -> Unit) = Chip(
     onClick = onClick,
     label = {
         if (confirm || subject == null) Text(if (confirm) "Tap again to delete" else label, fontWeight = FontWeight.Medium)
         else Icon(painterResource(subject), contentDescription = label, modifier = Modifier.size(22.dp))
     },
-    icon = { Icon(painterResource(R.drawable.sextant_delete), contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp)) },
+    icon = if (showIcon) {
+        { Icon(painterResource(R.drawable.sextant_delete), contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp)) }
+    } else null,
     colors = ChipDefaults.chipColors(backgroundColor = if (confirm) Color(0xFFB3261E) else Color(0xFF5C1F1F), contentColor = Color.White),
     modifier = Modifier.fillMaxWidth(),
 )
@@ -511,14 +513,14 @@ private fun AddressScreen(
         if (SextantEngine.recording && aps in 1 until SextantEngine.MIN_APS) {
             item { StatRow(listOf(R.drawable.sextant_wifi to "$aps ⚠"), Weak) }
         }
-        item { IconChip(listOf(R.drawable.sextant_add, R.drawable.sextant_room), "Mark room",
+        item { IconChip(emptyList(), "Add New Room", showLabel = true,
             stats = listOf(R.drawable.sextant_wifi to "$aps"), onClick = onDrop) }
         if (a.points.size >= 2) item { IconChip(listOf(R.drawable.sextant_locate), "Estimate Location", primary = false, showLabel = true) { onLocate() } }
         items(a.points.sortedWith(ROOM_ORDER)) { p ->
             RowChip(roomLabel(a, p), icon = R.drawable.sextant_pin, stats = roomStats(p)) { onPoint(p.id) }
         }
         item {
-            DeleteChip("Delete address", confirmDelete, subject = R.drawable.sextant_home) {
+            DeleteChip("Delete Address", confirmDelete, showIcon = false) {
                 if (confirmDelete) {
                     if (SextantEngine.recording) SextantService.stop(ctx)
                     SextantEngine.deleteAddress(a); onDeleted()
@@ -570,12 +572,18 @@ private fun CaptureScreen(id: String, trackSteps: Boolean = true, onDone: (Captu
         if (SextantEngine.recording) SextantService.scanNow(ctx) else runCatching { wifi.startScan() }
     }
     LaunchedEffect(Unit) {
+        // Recording lifts Android's scan throttle; without it the first scans can be silently rejected.
+        if (!SextantEngine.recording &&
+            ctx.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            runCatching { SextantService.start(ctx) }
+        }
         requestScan()
         // Wait for enough scans for a stable fingerprint; the user can save early once one has arrived.
         while (scans.size < target && !finishEarly) {
             SextantEngine.pressure?.let { hpa.add(it) }
             delay(1000); elapsed++
-            if (elapsed % 6 == 0) requestScan()
+            // Retry quickly until the first scan lands, then settle into the normal cadence.
+            if (elapsed % (if (scans.isEmpty()) 2 else 6) == 0) requestScan()
         }
         if (!finishEarly) buzzDone(ctx)
         val all = scans.toMutableList()
@@ -794,14 +802,31 @@ private fun PointDetailScreen(id: String, pointId: String, listen: (String, Stri
         item { Title(roomLabel(a, p), Color.White) }
         item { StatRow(roomStats(p)) }
         p.stepsFromPrev?.let { item { StatRow(listOf(R.drawable.sextant_steps to "$it")) } }
-        item { RowChip(p.name, icon = R.drawable.sextant_edit) { listen("Room name", p.name) { SextantEngine.renamePoint(a, p, it) } } }
         item {
-            IconChip(listOf(R.drawable.sextant_scan, R.drawable.sextant_room), "Rescan room",
-                stats = if (p.scans.isEmpty()) listOf(R.drawable.sextant_wifi to "0 ⚠") else null, onClick = onRescan)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                RoomAction(R.drawable.sextant_edit, "Change name") {
+                    confirm = false; listen("Room name", p.name) { SextantEngine.renamePoint(a, p, it) }
+                }
+                RoomAction(R.drawable.sextant_scan, "Rescan room") { confirm = false; onRescan() }
+                RoomAction(R.drawable.sextant_map_pin, "Pin on map", tint = Color.Unspecified) { confirm = false; onMap() }
+                RoomAction(R.drawable.sextant_delete, if (confirm) "Tap again to delete room" else "Delete room",
+                    background = if (confirm) Color(0xFFB3261E) else Color(0xFF5C1F1F)) {
+                    if (confirm) { SextantEngine.deletePoint(a, p); onDeleted() } else confirm = true
+                }
+            }
         }
-        item { IconChip(listOf(R.drawable.markerdrop, R.drawable.sextant_edit), "Correct position", onClick = onMap) }
-        item {
-            DeleteChip("Delete room", confirm, subject = R.drawable.sextant_room) { if (confirm) { SextantEngine.deletePoint(a, p); onDeleted() } else confirm = true }
-        }
+        if (p.scans.isEmpty()) item { StatRow(listOf(R.drawable.sextant_wifi to "0 ⚠"), Weak) }
+        if (confirm) item { Small("Tap the trash again to delete.", Weak) }
+    }
+}
+
+@Composable
+private fun RoomAction(icon: Int, label: String, tint: Color = Color.White, background: Color = Color(0xFF33363B), onClick: () -> Unit) = Box(
+    modifier = Modifier.size(48.dp).clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
+        .semantics { contentDescription = label },
+    contentAlignment = Alignment.Center,
+) {
+    Box(Modifier.size(42.dp).background(background, CircleShape), contentAlignment = Alignment.Center) {
+        Icon(painterResource(icon), contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
     }
 }
