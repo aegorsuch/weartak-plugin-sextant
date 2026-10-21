@@ -96,6 +96,13 @@ object SextantEngine {
         return gps?.let { it.latitude to it.longitude }
     }
 
+    fun deleteAddress(a: SextantAddress) {
+        addresses.remove(a)
+        if (activeAddressId == a.id) activeAddressId = null
+        save(); touch()
+        log("delete_address", JSONObject().put("address", a.id).put("name", a.name).put("points", a.points.size))
+    }
+
     fun deletePoint(a: SextantAddress, p: SextantPoint) {
         a.points.remove(p); save(); touch()
         log("delete_point", JSONObject().put("address", a.id).put("point", p.id))

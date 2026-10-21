@@ -174,7 +174,8 @@ private fun SextantApp() {
             is Screen.Address -> AddressScreen(s.id,
                 onDrop = { screen = Screen.Capture(s.id) },
                 onLocate = { screen = Screen.Locate(s.id) },
-                onPoint = { screen = Screen.PointDetail(s.id, it) })
+                onPoint = { screen = Screen.PointDetail(s.id, it) },
+                onDeleted = { screen = Screen.Home })
             is Screen.Capture -> CaptureScreen(s.id,
                 onDone = { screen = Screen.FloorName(s.id, it) },
                 onCancel = { screen = Screen.Address(s.id) })
@@ -261,10 +262,11 @@ private fun HomeScreen(onOpen: (String) -> Unit, onAdd: () -> Unit) {
 }
 
 @Composable
-private fun AddressScreen(id: String, onDrop: () -> Unit, onLocate: () -> Unit, onPoint: (String) -> Unit) {
+private fun AddressScreen(id: String, onDrop: () -> Unit, onLocate: () -> Unit, onPoint: (String) -> Unit, onDeleted: () -> Unit) {
     SextantEngine.version // recompose when survey data changes
     val ctx = LocalContext.current
     val a = SextantEngine.address(id) ?: return
+    var confirmDelete by remember { mutableStateOf(false) }
     val aps = SextantEngine.lastScan.size
     ScalingLazyColumn(Modifier.fillMaxSize()) {
         item { Title("${a.name} · ${a.points.size} points") }
@@ -290,6 +292,19 @@ private fun AddressScreen(id: String, onDrop: () -> Unit, onLocate: () -> Unit, 
                 colors = ChipDefaults.secondaryChipColors(),
             )
         }
+        item {
+            CompactChip(
+                onClick = {
+                    if (confirmDelete) {
+                        if (SextantEngine.recording) SextantService.stop(ctx)
+                        SextantEngine.deleteAddress(a); onDeleted()
+                    } else confirmDelete = true
+                },
+                label = { Text(if (confirmDelete) "Tap again to delete" else "Delete address") },
+                colors = ChipDefaults.chipColors(backgroundColor = if (confirmDelete) Color(0xFF8B1A1A) else Color(0xFF33363B)),
+            )
+        }
+        if (confirmDelete) item { Small("Removes ${a.points.size} points. Walk log is kept.", Weak) }
         item { Small("Export: adb pull …/files/sextant") }
     }
 }
