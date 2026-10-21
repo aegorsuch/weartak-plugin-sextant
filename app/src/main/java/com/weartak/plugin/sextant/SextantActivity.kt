@@ -171,12 +171,17 @@ private fun SextantApp() {
                 onAdd = {
                     val a = SextantEngine.addAddress("Address ${SextantEngine.addresses.size + 1}")
                     screen = Screen.Address(a.id)
-                    listen("Address name") { name -> a.name = name; SextantEngine.save(); SextantEngine.touch() }
+                    listen("Address name") { name -> SextantEngine.renameAddress(a, name) }
                 },
             )
             is Screen.Address -> AddressScreen(s.id,
                 onDrop = { screen = Screen.Capture(s.id) },
                 onLocate = { screen = Screen.Locate(s.id) },
+                onRename = {
+                    SextantEngine.address(s.id)?.let { address ->
+                        listen("Address name") { name -> SextantEngine.renameAddress(address, name) }
+                    }
+                },
                 onPoint = { screen = Screen.PointDetail(s.id, it) },
                 onDeleted = { screen = Screen.Home })
             is Screen.Capture -> CaptureScreen(s.id,
@@ -314,14 +319,46 @@ private fun HomeScreen(onOpen: (String) -> Unit, onAdd: () -> Unit) {
 }
 
 @Composable
-private fun AddressScreen(id: String, onDrop: () -> Unit, onLocate: () -> Unit, onPoint: (String) -> Unit, onDeleted: () -> Unit) {
+private fun AddressScreen(
+    id: String,
+    onDrop: () -> Unit,
+    onLocate: () -> Unit,
+    onRename: () -> Unit,
+    onPoint: (String) -> Unit,
+    onDeleted: () -> Unit,
+) {
     SextantEngine.version // recompose when survey data changes
     val ctx = LocalContext.current
     val a = SextantEngine.address(id) ?: return
     var confirmDelete by remember { mutableStateOf(false) }
     val aps = SextantEngine.lastScan.size
     ScalingLazyColumn(Modifier.fillMaxSize()) {
-        item { Title("${a.name} · ${roomsLabel(a.points.size)}") }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 18.dp, bottom = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    "${a.name} · ${roomsLabel(a.points.size)}".uppercase(),
+                    fontSize = 12.sp,
+                    color = Color(0xFFAAAAAA),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.weight(1f),
+                )
+                CompactChip(
+                    onClick = onRename,
+                    label = {
+                        Icon(
+                            painterResource(R.drawable.sextant_edit),
+                            contentDescription = "Edit address name",
+                            modifier = Modifier.size(18.dp),
+                        )
+                    },
+                    colors = ChipDefaults.secondaryChipColors(),
+                )
+            }
+        }
         item {
             val steps = SextantEngine.stepsSinceStart()
             val rec = if (SextantEngine.recording) "● Recording · ${SextantEngine.scanCount} scans" +

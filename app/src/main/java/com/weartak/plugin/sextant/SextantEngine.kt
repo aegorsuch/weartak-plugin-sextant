@@ -85,6 +85,12 @@ object SextantEngine {
         addresses.add(a); save(); touch(); return a
     }
 
+    fun renameAddress(a: SextantAddress, name: String) {
+        val clean = name.trim().takeIf { it.isNotEmpty() } ?: return
+        a.name = clean; save(); touch()
+        log("rename_address", JSONObject().put("address", a.id).put("name", clean))
+    }
+
     fun setManualPosition(a: SextantAddress, p: SextantPoint, lat: Double, lon: Double) {
         p.lat = lat; p.lon = lon; p.acc = null; p.posSource = "manual"; save(); touch()
         log("set_position", JSONObject().put("address", a.id).put("point", p.id).put("lat", lat).put("lon", lon))
@@ -207,6 +213,7 @@ object SextantEngine {
             val root = JSONObject(f.readText())
             root.optJSONObject("ssids")?.let { o -> o.keys().forEach { ssidByBssid[it] = o.getString(it) } }
             val arr = root.getJSONArray("addresses")
+            var addressNameUpdated = false
             for (i in 0 until arr.length()) {
                 val ao = arr.getJSONObject(i)
                 val pts = mutableListOf<SextantPoint>()
@@ -223,8 +230,14 @@ object SextantEngine {
                         po.optDoubleOrNull("acc")?.toFloat(), po.optString("pos", "none"), po.optDoubleOrNull("stepsFromPrev")?.toLong(),
                         po.getLong("time"), scans))
                 }
-                addresses.add(SextantAddress(ao.getString("id"), ao.getString("name"), pts))
+                val savedName = ao.getString("name")
+                val name = if (savedName == "125 South Jefferson Street") {
+                    addressNameUpdated = true
+                    "125 S Jefferson St"
+                } else savedName
+                addresses.add(SextantAddress(ao.getString("id"), name, pts))
             }
+            if (addressNameUpdated) save()
         }.onFailure { Log.w(TAG, "load failed", it) }
     }
 
