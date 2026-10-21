@@ -46,8 +46,9 @@ features, leave it unchecked and record **N/A** with the reason in the results.
   stand still for the capture; the scan count updates and name, floor and map pin are unchanged.
 - [ ] **Icons:** stats show as icons (Wi-Fi, floor, GPS, barometer, steps); record/stop,
   cancel, skip and set-here are icon buttons; no leftover helper text duplicates an icon.
-- [ ] **Icon chips:** Mark room is `+ room`, Add address is `+ home`, Locate, Rescan,
+- [ ] **Icon chips:** Mark room is `+ room`, Add address is `+ home`; Rescan,
   Correct position and Delete are icon-only (TalkBack still reads their names).
+  **Estimate Location** shows its icon and text.
 - [ ] **No 0-scan rooms:** with recording **stopped**, mark a room; it still captures
   scans. Capture waits for 5 Wi-Fi scans (ring shows `n/5`, about 30 s while recording)
   with no time limit; once at least 1 scan arrives, ✓ saves early and ✕ cancels.
@@ -56,7 +57,7 @@ features, leave it unchecked and record **N/A** with the reason in the results.
   are converted to text after the update.
 - [ ] **Map placement / correct position:** set a point's position on the map with
   the crosshair **Set here**, and use the correct-position flow when GPS is wrong.
-- [ ] **Locate:** walk between surveyed points; **Locate** picks the nearest point
+- [ ] **Estimate Location:** walk between surveyed points; **Estimate Location** picks the nearest point
   and the right floor most of the time. Record misses with where you actually were.
 - [ ] **Local only:** no CoT/markers are sent to the TAK network from Sextant.
 - [ ] **Stop and battery:** stop recording; the foreground notification and scans

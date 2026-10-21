@@ -299,14 +299,15 @@ private fun ActionChip(label: String, icon: Int? = null, secondary: String? = nu
 
 /** Text-free chip: a row of icons (e.g. + room) with an optional stats line. [label] is for accessibility. */
 @Composable
-private fun IconChip(icons: List<Int>, label: String, stats: List<Stat>? = null, primary: Boolean = true, onClick: () -> Unit) = Chip(
+private fun IconChip(icons: List<Int>, label: String, stats: List<Stat>? = null, primary: Boolean = true, showLabel: Boolean = false, onClick: () -> Unit) = Chip(
     onClick = onClick,
     label = {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             icons.forEachIndexed { i, icon ->
-                Icon(painterResource(icon), contentDescription = if (i == 0) label else null,
+                Icon(painterResource(icon), contentDescription = if (i == 0 && !showLabel) label else null,
                     tint = if (icon == R.drawable.markerdrop) Color.Unspecified else Color.White, modifier = Modifier.size(22.dp))
             }
+            if (showLabel) Text(label, maxLines = 2, fontSize = 14.sp)
         }
     },
     secondaryLabel = stats?.let { { StatRow(it, if (primary) Amber else Color(0xFFBBBBBB), center = false, size = 11) } },
@@ -509,7 +510,7 @@ private fun AddressScreen(
         }
         item { IconChip(listOf(R.drawable.sextant_add, R.drawable.sextant_room), "Mark room",
             stats = listOf(R.drawable.sextant_wifi to "$aps"), onClick = onDrop) }
-        if (a.points.size >= 2) item { IconChip(listOf(R.drawable.sextant_locate, R.drawable.sextant_room), "Locate", primary = false) { onLocate() } }
+        if (a.points.size >= 2) item { IconChip(listOf(R.drawable.sextant_locate), "Estimate Location", primary = false, showLabel = true) { onLocate() } }
         items(a.points.sortedWith(ROOM_ORDER)) { p ->
             RowChip(roomLabel(a, p), icon = R.drawable.sextant_pin, stats = roomStats(p)) { onPoint(p.id) }
         }
