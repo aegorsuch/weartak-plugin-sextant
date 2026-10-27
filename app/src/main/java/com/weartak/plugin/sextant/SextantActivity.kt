@@ -513,9 +513,9 @@ private fun AddressScreen(
         if (SextantEngine.recording && aps in 1 until SextantEngine.MIN_APS) {
             item { StatRow(listOf(R.drawable.sextant_wifi to "$aps ⚠"), Weak) }
         }
+        if (a.points.size >= 2) item { IconChip(listOf(R.drawable.sextant_locate), "Estimate Location", primary = false, showLabel = true) { onLocate() } }
         item { IconChip(emptyList(), "Add New Room", showLabel = true,
             stats = listOf(R.drawable.sextant_wifi to "$aps"), onClick = onDrop) }
-        if (a.points.size >= 2) item { IconChip(listOf(R.drawable.sextant_locate), "Estimate Location", primary = false, showLabel = true) { onLocate() } }
         items(a.points.sortedWith(ROOM_ORDER)) { p ->
             RowChip(roomLabel(a, p), icon = R.drawable.sextant_pin, stats = roomStats(p)) { onPoint(p.id) }
         }
