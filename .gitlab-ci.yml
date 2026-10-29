@@ -38,7 +38,7 @@ unit_tests:
   script:
     - chmod +x gradlew scripts/fetch-sdk.sh
     - scripts/fetch-sdk.sh "$WEARTAK_SDK_REF"
-    - ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
+    - ./gradlew --no-daemon --stacktrace :app:testDebugUnitTest :app:assembleDebug
   artifacts:
     when: always
     expire_in: 7 days
