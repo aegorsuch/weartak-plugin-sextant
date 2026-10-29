@@ -53,7 +53,8 @@ class SextantPluginBinder(
 
     override fun getCapabilities(): PluginCapabilitiesParcel {
         log("getCapabilities")
-        return SextantPluginRuntime.getCapabilities(hostedMainUi = true, externalMainActivity = true)
+        // Sextant's real UI is SextantActivity; the hosted card schema has no controls.
+        return SextantPluginRuntime.getCapabilities(hostedMainUi = false, externalMainActivity = true)
     }
 
     override fun getApiVersion(): Int {
