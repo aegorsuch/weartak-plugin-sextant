@@ -64,6 +64,15 @@ android {
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        unitTests.all { test ->
+            // Robolectric fetches android-all jars outside Gradle's repositories.
+            if (gradle.extra.has("takArtifactoryUrl")) {
+                test.systemProperty("robolectric.dependency.repo.id", "takArtifactory")
+                test.systemProperty("robolectric.dependency.repo.url", gradle.extra["takArtifactoryUrl"]!!)
+                test.systemProperty("robolectric.dependency.repo.username", gradle.extra["takArtifactoryUser"]!!)
+                test.systemProperty("robolectric.dependency.repo.password", gradle.extra["takArtifactoryPassword"]!!)
+            }
+        }
     }
 }
 
