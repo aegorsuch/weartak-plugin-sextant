@@ -6,6 +6,28 @@ template. TAK.gov (`git.tak.gov/weartak-plugins/weartak-plugin-sextant`) is cano
 
 ## Pipeline
 
+Gradle jobs exchange a per-job token using
+`devsecops/gitlab-ci-common`'s `/template/artifactory_token_service.yml`.
+The non-root launcher uses `.artifactory_service_create_token_no_depends_bash`.
+Both test and release jobs run this setup; release signing setup follows it.
+Non-Gradle jobs retain an empty global `before_script`.
+No bundled repository init script is used with `FAIL_ON_PROJECT_REPOS`.
+
+Gradle checks the approved TAK Artifactory mirror
+(`https://artifacts.tak.gov/artifactory/maven-release`) first for plugins and dependencies
+when credentials are available. Username precedence is `ARTIFACTORY_CONSUME_USER`,
+`ARTIFACTORY_USER`, then `TAK_USERNAME`; password precedence independently follows
+`ARTIFACTORY_CONSUME_PASSWORD`, `ARTIFACTORY_PASSWORD`, then `TAK_PASSWORD`.
+Both must be nonblank or the mirror is omitted. Logs report only enabled/disabled,
+never credential values. Public repositories remain available as fallbacks.
+An unresolved-plugin error alone does not establish an upstream outage; inspect the
+job trace before changing repository configuration or dependency versions.
+Robolectric's independent downloader receives the same repository through test JVM
+system properties. Never print tokens or credential values. Expected safe markers are
+`Token exchange successful` and `takArtifactory for plugins: enabled`.
+If token exchange requires an initial login, sign into `artifacts.tak.gov` once as the
+pipeline user before retrying; do not weaken permissions or expose tokens.
+
 | Trigger | Jobs |
 | --- | --- |
 | Merge request | `release_publisher_tests`, `unit_tests` (debug build, no production signing) |
