@@ -6,16 +6,6 @@ template. TAK.gov (`git.tak.gov/weartak-plugins/weartak-plugin-sextant`) is cano
 
 ## Pipeline
 
-Gradle checks the approved TAK Artifactory mirror
-(`https://artifacts.tak.gov/artifactory/maven-release`) first for plugins and dependencies
-when credentials are available. Username precedence is `ARTIFACTORY_CONSUME_USER`,
-`ARTIFACTORY_USER`, then `TAK_USERNAME`; password precedence independently follows
-`ARTIFACTORY_CONSUME_PASSWORD`, `ARTIFACTORY_PASSWORD`, then `TAK_PASSWORD`.
-Both must be nonblank or the mirror is omitted. Logs report only enabled/disabled,
-never credential values. Public repositories remain available as fallbacks.
-An unresolved-plugin error alone does not establish an upstream outage; inspect the
-job trace before changing repository configuration or dependency versions.
-
 | Trigger | Jobs |
 | --- | --- |
 | Merge request | `release_publisher_tests`, `unit_tests` (debug build, no production signing) |
