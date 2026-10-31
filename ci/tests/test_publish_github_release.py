@@ -36,7 +36,7 @@ def environment():
 
 
 def asset(asset_id, iid, content=b"old apk"):
-    name = f"Sextant-5.8.0.3-p{iid}.apk"
+    name = f"WearTAK-Plugin-Sextant-5.8.0.3-p{iid}.apk"
     return {"id": asset_id, "name": name, "label": name, "state": "uploaded", "size": len(content)}
 
 
@@ -154,7 +154,8 @@ class PublisherTests(unittest.TestCase):
         self.assertEqual(api.release["name"], "TAK.gov Forge CI/CD Pipeline Release (5.8.0.3-p12)")
         self.assertEqual(api.release["tag_name"], "TAK.gov-Forge-CI-CD-Pipeline-Release")
         self.assertEqual([(a["name"], a["label"]) for a in api.items],
-                         [("Sextant-5.8.0.3-p12.apk", "Sextant-5.8.0.3-p12.apk")])
+                         [("WearTAK-Plugin-Sextant-5.8.0.3-p12.apk",
+                           "WearTAK-Plugin-Sextant-5.8.0.3-p12.apk")])
         self.assertEqual(api.release["make_latest"], "false")
         body = api.release["body"]
         for value in ("5.8.0.3", "583", self.digest, "e" * 40, self.state["pipeline_url"]):
@@ -249,8 +250,49 @@ class PublisherTests(unittest.TestCase):
         api = FakeGitHub()
         self.publish(api)
         self.assertEqual(api.release["name"], "TAK.gov Forge CI/CD Pipeline Release (5.8.0.3-p12)")
-        self.assertEqual(api.items[0]["name"], "Sextant-5.8.0.3-p12.apk")
+        self.assertEqual(api.items[0]["name"], "WearTAK-Plugin-Sextant-5.8.0.3-p12.apk")
         self.assertIn("5.8.0.3-p12+de139f69", api.release["body"])
+
+    def test_release_asset_name_has_one_pipeline_suffix_and_no_build_metadata(self):
+        for version in ("5.8.4", "5.8.4+e272aac1", "5.8.4-p42+e272aac1"):
+            with self.subTest(version=version):
+                self.assertEqual(p.release_asset_name(version, 42),
+                                 "WearTAK-Plugin-Sextant-5.8.4-p42.apk")
+
+    def test_mismatched_version_pipeline_fails_before_network_or_writes(self):
+        api = FakeGitHub()
+        with self.assertRaisesRegex(p.PublishError, "pipeline does not match"):
+            p.publish(api, self.state, self.apk, self.digest, "5.8.4-p11+sha", 5840011)
+        self.assertEqual(api.calls, [])
+
+    def test_main_preserves_signed_bytes_and_same_pipeline_original_on_retry(self):
+        self.metadata["elements"][0].update(versionName="5.8.4-p12+sha", versionCode=5840012)
+        self.write_metadata()
+        api = FakeGitHub(self.state | {"sha256": self.digest})
+        old = asset(9, 12, self.apk.read_bytes())
+        old["name"] = old["label"] = "Sextant-5.8.4-p12.apk"
+        api.items = [old]
+        with patch.dict(p.os.environ, environment(), clear=True), \
+                patch.object(p.Path, "cwd", return_value=self.root), \
+                patch.object(p, "GitHub", return_value=api):
+            self.assertEqual(p.main(), 0)
+            api.calls.clear()
+            self.assertEqual(p.main(), 0)
+        self.assertIn(old, api.items)
+        self.assertEqual(api.content[100], self.apk.read_bytes())
+        self.assertEqual(api.items[1]["name"], "WearTAK-Plugin-Sextant-5.8.4-p12.apk")
+        self.assertIn("5.8.4-p12+sha", api.release["body"])
+        self.assertIn("5840012", api.release["body"])
+        self.assertFalse(any(c[0] == "POST" and c[1] != "dispatches" for c in api.calls))
+
+    def test_old_unprefixed_assets_are_owned_only_with_matching_labels(self):
+        api = FakeGitHub(dict(self.state, pipeline_iid=11))
+        old = asset(2, 11)
+        old["name"] = old["label"] = "Sextant-5.8.4-p11.apk"
+        unrelated = dict(old, id=3, label=None)
+        api.items = [old, unrelated]
+        self.publish(api)
+        self.assertEqual({a["id"] for a in api.items}, {3, 100})
 
     def test_legacy_named_assets_are_cleaned_up(self):
         api = FakeGitHub(dict(self.state, pipeline_iid=11))

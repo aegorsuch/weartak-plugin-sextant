@@ -13,8 +13,8 @@ function release(overrides = {}) {
     html_url: `https://github.com/o/r/releases/tag/${TAG}`,
     body: `- APK version: **5.8.0.3-p108**\n\n<!-- sextant-rolling-v1 ${JSON.stringify(STATE)} -->`,
     assets: [{
-      name: 'Sextant-5.8.0.3-p108.apk', state: 'uploaded',
-      browser_download_url: 'https://github.com/o/r/releases/download/x/Sextant-5.8.0.3-p108.apk',
+      name: 'WearTAK-Plugin-Sextant-5.8.0.3-p108.apk', state: 'uploaded',
+      browser_download_url: 'https://github.com/o/r/releases/download/x/WearTAK-Plugin-Sextant-5.8.0.3-p108.apk',
     }],
     ...overrides,
   };
@@ -66,9 +66,24 @@ test('creates one assigned checklist with download link and release details', as
   assert.equal(issue.title, 'Release testing: TAK.gov Forge CI/CD Pipeline Release (5.8.0.3-p108)');
   assert.deepEqual(issue.assignees, ['paul-weartak']);
   assert.match(issue.body, /<!-- sextant-release-testing:pipeline-1791701 -->/);
-  assert.match(issue.body, /\[Sextant-5\.8\.0\.3-p108\.apk\]\(https:/);
+  assert.match(issue.body, /\[WearTAK-Plugin-Sextant-5\.8\.0\.3-p108\.apk\]\(https:/);
   assert.match(issue.body, /APK version: \*\*5\.8\.0\.3-p108\*\*/);
   assert.match(issue.body, /## Core acceptance checklist/);
+});
+
+test('prefers prefixed APK during migration and still accepts legacy-only releases', async () => {
+  const current = release().assets[0];
+  const legacy = {
+    ...current,
+    name: 'Sextant-5.8.0.3-p108.apk',
+    browser_download_url: current.browser_download_url.replace('WearTAK-Plugin-', ''),
+  };
+  for (const assets of [[legacy, current], [legacy]]) {
+    const f = fake({ rel: release({ assets }) });
+    await createReleaseTestIssue({ ...f, context: dispatch(), tester: 'paul-weartak' });
+    const expected = assets.length === 2 ? current : legacy;
+    assert.ok(f.calls.created[0].body.includes(`[${expected.name}](${expected.browser_download_url})`));
+  }
 });
 
 test('existing checklist (even closed) is not duplicated', async () => {

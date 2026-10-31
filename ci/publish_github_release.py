@@ -16,7 +16,7 @@ REPO = "aegorsuch/weartak-plugin-sextant"
 TAG = "TAK.gov-Forge-CI-CD-Pipeline-Release"
 TITLE = "TAK.gov Forge CI/CD Pipeline Release"
 MARKER = "sextant-rolling-v1"
-ASSET_PATTERN = re.compile(r"Sextant-[0-9A-Za-z._-]*-p([1-9][0-9]*)\.apk")
+ASSET_PATTERN = re.compile(r"(?:WearTAK-Plugin-)?Sextant-[0-9A-Za-z._-]*-p([1-9][0-9]*)\.apk")
 LEGACY_ASSET_PATTERN = re.compile(r"sextant-development-p([1-9][0-9]*)-([0-9a-f]{64})\.apk")
 LABEL_PREFIX = "sextant-rolling-v1:"
 # Handled by .github/workflows/release-testing.yml on the GitHub default branch.
@@ -200,6 +200,16 @@ def display_version(version, pipeline_iid):
     return short if short.endswith(suffix) else short + suffix
 
 
+def release_asset_name(version, pipeline_iid):
+    filename_version = version.split("+", 1)[0]
+    pipeline_version = re.fullmatch(r"(.+)-p([1-9][0-9]*)", filename_version)
+    if pipeline_version:
+        if int(pipeline_version[2]) != pipeline_iid:
+            raise PublishError("APK version pipeline does not match the publishing pipeline.")
+        filename_version = pipeline_version[1]
+    return f"WearTAK-Plugin-Sextant-{filename_version}-p{pipeline_iid}.apk"
+
+
 def asset_pipeline(asset):
     """Pipeline IID of an asset this publisher owns, or None for anything else."""
     name = asset.get("name", "")
@@ -217,6 +227,7 @@ def managed_asset(asset):
 
 
 def publish(api, state, apk, digest, version, code):
+    name = release_asset_name(version, state["pipeline_iid"])
     repository = api.request("GET", "")
     if (repository.get("full_name") != REPO or
             repository.get("archived") is not False or
@@ -265,7 +276,6 @@ def publish(api, state, apk, digest, version, code):
         })
     release_id = release["id"]
     assets = api.assets(release_id)
-    name = f"Sextant-{short}.apk"
     # GitHub shows the label instead of the file name, so keep it human-readable.
     label = name
     existing = [item for item in assets if item["name"] == name]
