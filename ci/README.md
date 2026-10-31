@@ -40,6 +40,20 @@ plugin binder (`SextantPluginBinderTest`), floor/room labels, room presets and s
 persistence, barometer floor estimate, and Wi-Fi locate (`SextantEngineTest`). Run it locally with
 `./gradlew :app:testDebugUnitTest`.
 
+### Launcher icon compatibility
+
+The application manifest uses `@mipmap/sextant_launcher`: packaged RGBA PNGs at
+mdpi (48x48), hdpi (72x72), xhdpi (96x96), xxhdpi (144x144), and xxxhdpi (192x192).
+They rasterize the unchanged 48dp `drawable/sextant_launcher.xml` artwork, including
+its pivot/scale transform, paths, colors, and rounded strokes. The vector remains
+available for internal use. There is no adaptive/vector override of the launcher mipmap.
+`SextantLauncherIconTest` checks the manifest icon and bitmap dimensions/densities.
+
+This addresses a suspected Knox Manage vector-icon extraction incompatibility, not
+a confirmed root cause. Acceptance still requires uploading a new, unmodified,
+production-signed TAK.gov APK to Knox Manage and confirming the invalid-icon warning
+is absent and Icon image selection works. Local resource checks do not prove Knox acceptance.
+
 Release builds are signed with the **WearTAK production key** and the job fails unless the
 APK signer SHA-256 is `1579b600…348d`. Release WearTAK only binds plugins with the same
 signature (signature-level `BIND_PLUGIN`), so debug builds only work with WearTAK `.dev`.
