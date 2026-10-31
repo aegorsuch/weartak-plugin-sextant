@@ -63,8 +63,12 @@ Same scheme as WearTAK (WEARTAK-239), in `app/build.gradle.kts`:
 
 After **all** earlier jobs pass, `publish_github_main` publishes the verified `main_release`
 APK to the GitHub mirror as **TAK.gov Forge CI/CD Pipeline Release (<version>)** on the
-fixed tag `TAK.gov-Forge-CI-CD-Pipeline-Release`, asset `Sextant-<version>.apk`
-(`<version>` is the versionName without `+sha`). It is a stable release (`prerelease=false`)
+fixed tag `TAK.gov-Forge-CI-CD-Pipeline-Release`, asset
+`WearTAK-Plugin-Sextant-<base-version>-p<pipeline-iid>.apk`
+(e.g. `WearTAK-Plugin-Sextant-5.8.4-p42.apk`). Build metadata (`+sha`) is omitted,
+and the pipeline suffix appears exactly once. A stamped version must match the publishing
+pipeline. Android app label, package, versionName and versionCode remain unchanged.
+It is a stable release (`prerelease=false`)
 that does not take GitHub's "Latest" flag. The body records versionName/versionCode,
 pipeline ID/IID and URL, source SHA and APK SHA-256.
 
@@ -77,6 +81,8 @@ Safety rules (identical to WearOS, see `ci/publish_github_release.py`):
 - Never pushes commits or creates/moves tags; the anchor tag must already exist.
 - Older pipelines never replace newer ones; only older publisher-owned assets are deleted,
   after verification. Resource group `sextant-github-main` serializes writers.
+- Naming migration retains same-pipeline unprefixed APKs, preserving existing download
+  links. Release testing prefers prefixed assets, with a legacy-name fallback.
 
 ### Administrator setup
 
