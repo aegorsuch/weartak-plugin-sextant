@@ -87,7 +87,14 @@ Survey data and walk logs are written to
 
 ## License
 
-No project license file or license declaration was found in this repository.
-Licensing terms need confirmation from the project owner; this README does not grant
-a license or change existing rights. The separately distributed WearTAK plugin SDK
-remains subject to its own terms.
+The repository owner's original code is licensed under the
+[GNU General Public License, version 3](LICENSE), or (at your option) any later
+version (**GPL-3.0-or-later**).
+
+This grant covers only the repository owner's original code, not third-party
+components or code owned by others. Existing copyright, attribution, and rights
+notices remain in effect. Gradle wrapper scripts (`gradlew`, `gradlew.bat`) and
+`gradle/wrapper/gradle-wrapper.jar` retain their Apache License 2.0 terms and
+bundled notices. The separately distributed WearTAK plugin SDK, third-party
+dependencies, and external map data, tiles, and fonts remain subject to their own
+licenses and terms; this declaration does not relicense them.
