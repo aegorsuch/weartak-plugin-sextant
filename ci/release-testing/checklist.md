@@ -47,7 +47,8 @@ features, leave it unchecked and record **N/A** with the reason in the results.
 - [ ] **Icons:** stats show as icons (Wi-Fi, floor, GPS, barometer, steps); record/stop,
   cancel, skip and set-here are icon buttons; no leftover helper text duplicates an icon.
 - [ ] **Icon chips:** Add address is `+ home`. **Add New Room** and **Delete Address**
-  are text-only; **Estimate Location** shows its icon and text.
+  are text-only; **Estimate Location** shows its icon and text, directly above
+  **Add New Room** once an address has at least two rooms.
 - [ ] **Room actions:** a room's detail screen shows one row of four round buttons —
   pencil (change name), scan (rescan), map + pin (pin on map) and trash (delete; tap
   once to turn it red, again to delete). TalkBack reads each button's name.

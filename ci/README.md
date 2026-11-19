@@ -6,6 +6,28 @@ template. TAK.gov (`git.tak.gov/weartak-plugins/weartak-plugin-sextant`) is cano
 
 ## Pipeline
 
+Gradle jobs exchange a per-job token using
+`devsecops/gitlab-ci-common`'s `/template/artifactory_token_service.yml`.
+The non-root launcher uses `.artifactory_service_create_token_no_depends_bash`.
+Both test and release jobs run this setup; release signing setup follows it.
+Non-Gradle jobs retain an empty global `before_script`.
+No bundled repository init script is used with `FAIL_ON_PROJECT_REPOS`.
+
+Gradle checks the approved TAK Artifactory mirror
+(`https://artifacts.tak.gov/artifactory/maven-release`) first for plugins and dependencies
+when credentials are available. Username precedence is `ARTIFACTORY_CONSUME_USER`,
+`ARTIFACTORY_USER`, then `TAK_USERNAME`; password precedence independently follows
+`ARTIFACTORY_CONSUME_PASSWORD`, `ARTIFACTORY_PASSWORD`, then `TAK_PASSWORD`.
+Both must be nonblank or the mirror is omitted. Logs report only enabled/disabled,
+never credential values. Public repositories remain available as fallbacks.
+An unresolved-plugin error alone does not establish an upstream outage; inspect the
+job trace before changing repository configuration or dependency versions.
+Robolectric's independent downloader receives the same repository through test JVM
+system properties. Never print tokens or credential values. Expected safe markers are
+`Token exchange successful` and `takArtifactory for plugins: enabled`.
+If token exchange requires an initial login, sign into `artifacts.tak.gov` once as the
+pipeline user before retrying; do not weaken permissions or expose tokens.
+
 | Trigger | Jobs |
 | --- | --- |
 | Merge request | `release_publisher_tests`, `unit_tests` (debug build, no production signing) |
@@ -17,6 +39,20 @@ plugin binder (`SextantPluginBinderTest`), floor/room labels, room presets and s
 (`SextantLabelsTest`), and engine logic: address rename and migration, room rescan and
 persistence, barometer floor estimate, and Wi-Fi locate (`SextantEngineTest`). Run it locally with
 `./gradlew :app:testDebugUnitTest`.
+
+### Launcher icon compatibility
+
+The application manifest uses `@mipmap/sextant_launcher`: packaged RGBA PNGs at
+mdpi (48x48), hdpi (72x72), xhdpi (96x96), xxhdpi (144x144), and xxxhdpi (192x192).
+They rasterize the unchanged 48dp `drawable/sextant_launcher.xml` artwork, including
+its pivot/scale transform, paths, colors, and rounded strokes. The vector remains
+available for internal use. There is no adaptive/vector override of the launcher mipmap.
+`SextantLauncherIconTest` checks the manifest icon and bitmap dimensions/densities.
+
+This addresses a suspected Knox Manage vector-icon extraction incompatibility, not
+a confirmed root cause. Acceptance still requires uploading a new, unmodified,
+production-signed TAK.gov APK to Knox Manage and confirming the invalid-icon warning
+is absent and Icon image selection works. Local resource checks do not prove Knox acceptance.
 
 Release builds are signed with the **WearTAK production key** and the job fails unless the
 APK signer SHA-256 is `1579b600…348d`. Release WearTAK only binds plugins with the same
@@ -41,8 +77,12 @@ Same scheme as WearTAK (WEARTAK-239), in `app/build.gradle.kts`:
 
 After **all** earlier jobs pass, `publish_github_main` publishes the verified `main_release`
 APK to the GitHub mirror as **TAK.gov Forge CI/CD Pipeline Release (<version>)** on the
-fixed tag `TAK.gov-Forge-CI-CD-Pipeline-Release`, asset `Sextant-<version>.apk`
-(`<version>` is the versionName without `+sha`). It is a stable release (`prerelease=false`)
+fixed tag `TAK.gov-Forge-CI-CD-Pipeline-Release`, asset
+`WearTAK-Plugin-Sextant-<base-version>-p<pipeline-iid>.apk`
+(e.g. `WearTAK-Plugin-Sextant-5.8.4-p42.apk`). Build metadata (`+sha`) is omitted,
+and the pipeline suffix appears exactly once. A stamped version must match the publishing
+pipeline. Android app label, package, versionName and versionCode remain unchanged.
+It is a stable release (`prerelease=false`)
 that does not take GitHub's "Latest" flag. The body records versionName/versionCode,
 pipeline ID/IID and URL, source SHA and APK SHA-256.
 
@@ -55,6 +95,8 @@ Safety rules (identical to WearOS, see `ci/publish_github_release.py`):
 - Never pushes commits or creates/moves tags; the anchor tag must already exist.
 - Older pipelines never replace newer ones; only older publisher-owned assets are deleted,
   after verification. Resource group `sextant-github-main` serializes writers.
+- Naming migration retains same-pipeline unprefixed APKs, preserving existing download
+  links. Release testing prefers prefixed assets, with a legacy-name fallback.
 
 ### Administrator setup
 

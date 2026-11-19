@@ -72,11 +72,23 @@ class SextantPluginBinderTest {
     }
 
     @Test
-    fun capabilities_exposeLauncherAndHostedMainUi() {
+    fun capabilities_exposeLauncherOnly() {
         val (_, b) = newBinderPair()
         val caps = b.getCapabilities()
-        assertTrue(caps.hostedMainUi)
+        assertFalse(caps.hostedMainUi)
         assertTrue(caps.externalMainActivity)
+        assertFalse(caps.hostedSettingsUi)
+        assertFalse(caps.externalSettingsActivity)
+    }
+
+    @Test
+    fun pluginInfo_describesSextantNotTemplate() {
+        val (_, b) = newBinderPair()
+        val info = b.getPluginInfo()
+        assertEquals("Sextant", info.displayName)
+        val description = info.description.orEmpty()
+        assertFalse(description.contains("template", ignoreCase = true))
+        assertTrue(description.contains("Wi-Fi"))
     }
 
     @Test

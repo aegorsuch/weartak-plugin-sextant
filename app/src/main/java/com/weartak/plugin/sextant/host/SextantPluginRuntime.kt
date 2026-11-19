@@ -391,12 +391,12 @@ object SextantPluginRuntime {
             displayName = displayNameOverride,
             versionName = versionName,
             packageName = packageName,
-            description = "Reference plugin template with settings, main UI, and control-plane examples.",
+            description = "Indoor Wi-Fi room survey and location estimation.",
         )
 
     fun getCapabilities(hostedMainUi: Boolean, externalMainActivity: Boolean) =
         PluginCapabilitiesParcel(
-            hostedSettingsUi = true,
+            hostedSettingsUi = false,
             hostedMainUi = hostedMainUi,
             externalSettingsActivity = false,
             externalMainActivity = externalMainActivity,

@@ -5,7 +5,8 @@ const { join } = require('node:path');
 const TAG = 'TAK.gov-Forge-CI-CD-Pipeline-Release';
 const RELEASE_MARKER = /<!-- sextant-rolling-v1 (\{.*?\}) -->/;
 const PROJECT_ID = '6910';
-const APK = /^Sextant-[0-9A-Za-z._-]+\.apk$/;
+const APK = /^WearTAK-Plugin-Sextant-[0-9A-Za-z._-]+-p[1-9]\d*\.apk$/;
+const LEGACY_APK = /^Sextant-[0-9A-Za-z._-]+-p[1-9]\d*\.apk$/;
 
 function releaseState(release) {
   const match = RELEASE_MARKER.exec(release.body || '');
@@ -56,7 +57,9 @@ async function createReleaseTestIssue({ github, context, core, tester }) {
       return null;
     }
   }
-  const apk = (release.assets || []).find((a) => APK.test(a.name) && a.state === 'uploaded');
+  const assets = release.assets || [];
+  const apk = assets.find((a) => APK.test(a.name) && a.state === 'uploaded') ||
+    assets.find((a) => LEGACY_APK.test(a.name) && a.state === 'uploaded');
   if (!apk) throw new Error(`Release ${TAG} has no uploaded Sextant APK.`);
 
   const marker = `<!-- sextant-release-testing:pipeline-${pipelineId} -->`;
