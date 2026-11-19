@@ -59,7 +59,7 @@ APK signer SHA-256 is `1579b600…348d`. Release WearTAK only binds plugins with
 signature (signature-level `BIND_PLUGIN`), so debug builds only work with WearTAK `.dev`.
 
 The WearTAK plugin SDK is not in this repository; `scripts/fetch-sdk.sh` pulls it from
-`weartak-plugins/weartak-plugin-template` (`WEARTAK_SDK_REF`, default `master`) using
+`weartak-plugins/weartak-plugin-template` (`WEARTAK_SDK_REF`, default `main`) using
 `SDK_READ_TOKEN` if set, otherwise `CI_JOB_TOKEN`.
 
 ## Versioning
