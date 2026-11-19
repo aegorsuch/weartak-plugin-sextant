@@ -14,7 +14,7 @@ variables:
   KUBERNETES_MEMORY_LIMIT: "8Gi"
   GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
   # Template ref the WearTAK plugin SDK is fetched from.
-  WEARTAK_SDK_REF: "master"
+  WEARTAK_SDK_REF: "main"
 
 stages:
   - test

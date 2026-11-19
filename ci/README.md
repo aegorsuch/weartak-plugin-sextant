@@ -59,7 +59,7 @@ APK signer SHA-256 is `1579b600…348d`. Release WearTAK only binds plugins with
 signature (signature-level `BIND_PLUGIN`), so debug builds only work with WearTAK `.dev`.
 
 The WearTAK plugin SDK is not in this repository; `scripts/fetch-sdk.sh` pulls it from
-`weartak-plugins/weartak-plugin-template` (`WEARTAK_SDK_REF`, default `master`) using
+`weartak-plugins/weartak-plugin-template` (`WEARTAK_SDK_REF`, default `main`) using
 `SDK_READ_TOKEN` if set, otherwise `CI_JOB_TOKEN`.
 
 ## Versioning
@@ -110,6 +110,31 @@ Safety rules (identical to WearOS, see `ci/publish_github_release.py`):
    scoped to this repository with **Contents: read and write**. Add it as GitLab variable
    `SEXTANT_GITHUB_TOKEN` (masked, protected, hidden, no expansion).
 5. If `CI_JOB_TOKEN` cannot read the template, add `SDK_READ_TOKEN` (read_repository).
+6. For immediate Market refresh (WEARTAK-322), create a **separate**
+   [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new)
+   selecting only `aegorsuch/weartak-wearos`, with **Actions: read and write**.
+   Store it in the canonical project's
+   [GitLab CI/CD variables](https://git.tak.gov/weartak-plugins/weartak-plugin-sextant/-/settings/ci_cd)
+   as `MARKET_CATALOG_DISPATCH_TOKEN` (protected, masked, hidden, no expansion).
+   Never reuse or broaden `SEXTANT_GITHUB_TOKEN`; it remains scoped to this plugin mirror.
+   The destination workflow must exist on `main` and accept `workflow_dispatch`.
+
+### Immediate Market refresh
+
+Only after APK download size/SHA-256 verification, published stable release readback,
+and successful cleanup of older owned assets, the publisher sends a fixed
+`POST https://api.github.com/repos/aegorsuch/weartak-wearos/actions/workflows/publish-market-catalog.yml/dispatches`
+with body `{"ref":"main"}` using only `MARKET_CATALOG_DISPATCH_TOKEN`.
+Redirects are refused, timeout is 30 seconds, and only HTTP 204 counts as acceptance.
+No token, headers, response body, or transport details are logged.
+
+Missing token or failed dispatch fails the notification/job explicitly, but the verified
+release stays published. Tester notification is attempted independently. Fix credentials
+or connectivity, then retry the **same pipeline's** `publish_github_main` job: it verifies
+the existing APK again before redispatching, without duplicating assets. Skipped/stale,
+failed, debug, and prerelease publication paths never dispatch. HTTP 204 confirms only
+workflow acceptance, not catalog completion; the destination's hourly fallback remains
+unchanged. No additional runner or watch/install behavior changes are required.
 
 ## Release testing
 

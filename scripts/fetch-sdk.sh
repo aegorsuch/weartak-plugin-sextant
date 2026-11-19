@@ -3,7 +3,7 @@
 # Locally this uses your git.tak.gov credentials. In GitLab CI it uses SDK_READ_TOKEN
 # (read_repository) if set, otherwise CI_JOB_TOKEN (the template must allow this project).
 set -euo pipefail
-ref="${1:-master}"
+ref="${1:-main}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 repo="git.tak.gov/weartak-plugins/weartak-plugin-template.git"
 if [ -n "${SDK_READ_TOKEN:-}" ]; then

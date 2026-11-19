@@ -1,5 +1,5 @@
 # Fetches the WearTAK plugin SDK (.aar) from the TAK.gov plugin template into app/libs.
-param([string]$Ref = "master")
+param([string]$Ref = "main")
 $ErrorActionPreference = "Stop"
 $root = Split-Path $PSScriptRoot -Parent
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("weartak-sdk-" + [guid]::NewGuid())

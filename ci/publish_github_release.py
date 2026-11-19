@@ -22,10 +22,50 @@ LABEL_PREFIX = "sextant-rolling-v1:"
 # Handled by .github/workflows/release-testing.yml on the GitHub default branch.
 DISPATCH_EVENT = "sextant-release-published"
 OUTPUT = Path("app/build/outputs/apk/release")
+MARKET_DISPATCH_URL = (
+    "https://api.github.com/repos/aegorsuch/weartak-wearos/"
+    "actions/workflows/publish-market-catalog.yml/dispatches"
+)
 
 
 class PublishError(Exception):
     pass
+
+
+class RefuseMarketRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise PublishError("Market catalog notification refused a redirect.")
+
+
+def dispatch_market_catalog(token):
+    if not token:
+        raise PublishError(
+            "Market catalog notification requires protected, masked "
+            "MARKET_CATALOG_DISPATCH_TOKEN (destination-only Actions: write)."
+        )
+    request = urllib.request.Request(
+        MARKET_DISPATCH_URL,
+        data=b'{"ref":"main"}',
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "Content-Type": "application/json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "Sextant-GitLab-release",
+        },
+        method="POST",
+    )
+    opener = urllib.request.build_opener(RefuseMarketRedirect())
+    try:
+        with opener.open(request, timeout=30) as response:
+            if response.status != 204:
+                raise PublishError("Market catalog notification requires HTTP 204.")
+    except urllib.error.HTTPError as error:
+        raise PublishError(
+            f"Market catalog notification failed: HTTP {error.code}."
+        ) from None
+    except (urllib.error.URLError, OSError, ValueError):
+        raise PublishError("Market catalog notification transport failed.") from None
 
 
 class SafeRedirect(urllib.request.HTTPRedirectHandler):
@@ -313,15 +353,23 @@ def publish(api, state, apk, digest, version, code):
     print(f"Published {title}: version {version} ({code}), SHA256 {digest}")
     # Only a verified build reaches testers. The workflow re-reads the release itself and
     # deduplicates per pipeline, so retrying a failed notification is safe.
+    failures = []
     try:
         api.request("POST", "dispatches", {
             "event_type": DISPATCH_EVENT,
             "client_payload": {"pipeline_id": state["pipeline_id"], "release_id": release_id},
         })
     except PublishError:
+        failures.append("release-testing notification failed")
+    try:
+        dispatch_market_catalog(os.environ.get("MARKET_CATALOG_DISPATCH_TOKEN"))
+    except PublishError as error:
+        failures.append(str(error))
+    if failures:
         raise PublishError(
-            "The release is published, but the release-testing notification failed. "
-            "Retry this job; the release and tester checklist are not duplicated."
+            f"The release is published, but {'; '.join(failures)}. "
+            "Retry this same pipeline job to reverify and resend notifications; "
+            "the release and tester checklist are not duplicated."
         ) from None
 
 
