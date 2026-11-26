@@ -66,10 +66,10 @@ The WearTAK plugin SDK is not in this repository; `scripts/fetch-sdk.sh` pulls i
 
 Same scheme as WearTAK (WEARTAK-239), in `app/build.gradle.kts`:
 
-- `baseVersionCode` / `baseVersionName` (currently `584` / `5.8.4`), aligned with the
-  WearTAK 5.8 line. Bump them for each official `vX.Y.Z[.B]` tag.
+- `baseVersionCode` / `baseVersionName` (currently `590` / `5.9.0`), aligned with the
+  WearTAK 5.9 line. Bump them for each official `vX.Y.Z[.B]` tag.
 - CI builds: versionCode = `base * 10000 + CI_PIPELINE_IID` (build fails at IID ≥ 10000),
-  versionName = `<base>-p<IID>+<short sha>`, e.g. `5.8.4-p12+1a2b3c4d`. Every pipeline is
+  versionName = `<base>-p<IID>+<short sha>`, e.g. `5.9.0-p12+1a2b3c4d`. Every pipeline is
   therefore an in-place upgrade (MDMs such as Knox accept it).
 - Local builds: versionCode = base, versionName = base.
 
@@ -79,7 +79,7 @@ After **all** earlier jobs pass, `publish_github_main` publishes the verified `m
 APK to the GitHub mirror as **TAK.gov Forge CI/CD Pipeline Release (<version>)** on the
 fixed tag `TAK.gov-Forge-CI-CD-Pipeline-Release`, asset
 `WearTAK-Plugin-Sextant-<base-version>-p<pipeline-iid>.apk`
-(e.g. `WearTAK-Plugin-Sextant-5.8.4-p42.apk`). Build metadata (`+sha`) is omitted,
+(e.g. `WearTAK-Plugin-Sextant-5.9.0-p42.apk`). Build metadata (`+sha`) is omitted,
 and the pipeline suffix appears exactly once. A stamped version must match the publishing
 pipeline. Android app label, package, versionName and versionCode remain unchanged.
 It is a stable release (`prerelease=false`)
