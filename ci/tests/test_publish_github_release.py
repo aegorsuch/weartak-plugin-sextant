@@ -342,6 +342,10 @@ class PublisherTests(unittest.TestCase):
             with self.subTest(version=version):
                 self.assertEqual(p.release_asset_name(version, 42),
                                  "WearTAK-Plugin-Sextant-5.8.4-p42.apk")
+        for version in ("5.9.0", "5.9.0+e272aac1", "5.9.0-p42+e272aac1"):
+            with self.subTest(version=version):
+                self.assertEqual(p.release_asset_name(version, 42),
+                                 "WearTAK-Plugin-Sextant-5.9.0-p42.apk")
 
     def test_mismatched_version_pipeline_fails_before_network_or_writes(self):
         api = FakeGitHub()
